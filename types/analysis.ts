@@ -1,30 +1,61 @@
-import { GrokAnalysisResult, ScoreCategory } from './grok'
+import type { GrokAnalysisResult, ScoreCategory } from './grok'
 
+/**
+ * Analysis database record (uses snake_case from DB)
+ */
 export interface Analysis extends GrokAnalysisResult {
   id: string
-  userId?: string
-  sessionId: string
-  ipHash: string
-  premiumUnlocked: boolean
-  premiumTier: 'free' | 'premium' | 'elite'
-  premiumTips?: string[]
-  stripePaymentId?: string
-  countryCode?: string
-  countryName?: string
-  r2Key?: string
-  photoDeletedAt?: string
-  sharedCount: number
-  challengeToken?: string
-  createdAt: string
-  updatedAt: string
+  user_id?: string
+  session_id: string
+  ip_hash: string
+
+  // Payment
+  premium_unlocked: boolean
+  premium_tier: 'free' | 'premium' | 'elite'
+  premium_tips?: string[]
+  stripe_payment_id?: string
+
+  // Metadata
+  country_code?: string
+  country_name?: string
+  r2_key?: string
+  photo_deleted_at?: string
+  shared_count: number
+  challenge_token?: string
+
+  // Timestamps
+  created_at: string
+  updated_at: string
 }
 
-export interface AnalysisMetadata {
+/**
+ * Client-safe analysis (public fields only, no premium content if not paid)
+ */
+export interface AnalysisPublic {
   id: string
   overallScore: number
-  category: ScoreCategory
+  symmetryScore: number
+  goldenRatioScore: number
+  boneStructureScore: number
+  harmonyScore: number
   percentile: number
+  category: ScoreCategory
+  summary: string
+  strengths: string[]
+  freeTip: string
+  premiumHook: string
   countryCode?: string
   countryName?: string
-  createdAt: string
+  premiumUnlocked: boolean
+  created_at: string
+}
+
+/**
+ * Update payload for premium unlock
+ */
+export interface AnalysisUpdatePremium {
+  premium_unlocked: boolean
+  premium_tier: 'premium' | 'elite'
+  premium_tips: string[]
+  stripe_payment_id: string
 }
