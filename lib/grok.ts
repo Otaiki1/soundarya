@@ -230,5 +230,4 @@ export async function testGrokAPI(): Promise<{ available: boolean; error?: strin
       error: error instanceof Error ? error.message : 'Network error'
     }
   }
-}</content>
-<parameter name="filePath">/Users/0t41k1/Documents/soundarya/lib/grok.ts
+}

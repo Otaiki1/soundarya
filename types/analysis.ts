@@ -1,6 +1,11 @@
 import type { GrokAnalysisResult, ScoreCategory } from './grok'
 
 /**
+ * Loading stages for analysis animation
+ */
+export type LoadingStage = 'detecting' | 'symmetry' | 'ratio' | 'structure' | 'writing'
+
+/**
  * Analysis database record (uses snake_case from DB)
  */
 export interface Analysis extends GrokAnalysisResult {
@@ -38,6 +43,8 @@ export interface AnalysisPublic {
   goldenRatioScore: number
   boneStructureScore: number
   harmonyScore: number
+  skinScore: number
+  dimorphismScore: number
   percentile: number
   category: ScoreCategory
   summary: string
@@ -47,7 +54,7 @@ export interface AnalysisPublic {
   countryCode?: string
   countryName?: string
   premiumUnlocked: boolean
-  created_at: string
+  createdAt: string
 }
 
 /**

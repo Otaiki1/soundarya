@@ -127,5 +127,4 @@ export async function processImageForAnalysis(file: File): Promise<ProcessedImag
  */
 export function imageToBase64(buffer: Buffer, mimeType: string = 'image/jpeg'): string {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
-}</content>
-<parameter name="filePath">/Users/0t41k1/Documents/soundarya/lib/image-validation.ts
+}

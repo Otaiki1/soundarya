@@ -1,0 +1,174 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { validateImage, processImageForAnalysis, imageToBase64 } from '@/lib/image-validation'
+import { uploadToR2 } from '@/lib/r2'
+import { analyseWithGrok } from '@/lib/grok'
+import { getCountryFromIP } from '@/lib/ip-geolocation'
+import { extractIPFromRequest } from '@/lib/ip-geolocation'
+import { hashIP } from '@/lib/rate-limit'
+import { getOrCreateSessionId } from '@/lib/session'
+
+export async function POST(request: NextRequest) {
+  try {
+    // Parse form data
+    const formData = await request.formData()
+    const photo = formData.get('photo') as File
+    const sessionId = formData.get('sessionId') as string
+
+    if (!photo || !sessionId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: photo and sessionId' },
+        { status: 400 }
+      )
+    }
+
+    // Get client IP for rate limiting and geolocation
+    const clientIP = extractIPFromRequest(request)
+    if (!clientIP) {
+      return NextResponse.json(
+        { error: 'Unable to determine client IP' },
+        { status: 400 }
+      )
+    }
+
+    const ipHash = await hashIP(clientIP)
+
+    // Check rate limit (3 free analyses per IP per 24h)
+    const rateLimitResult = await checkRateLimit(ipHash)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          retryAfter: rateLimitResult.retryAfter,
+          remaining: rateLimitResult.remaining
+        },
+        { status: 429 }
+      )
+    }
+
+    // Validate image
+    const validation = await validateImage(photo)
+    if (!validation.isValid) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      )
+    }
+
+    // Process image for analysis (resize, compress)
+    const processedImage = await processImageForAnalysis(photo)
+
+    // Upload to R2 storage
+    const uploadResult = await uploadToR2(
+      processedImage.buffer,
+      'image/jpeg',
+      photo.name
+    )
+
+    if (!uploadResult.success) {
+      return NextResponse.json(
+        { error: 'Failed to upload image: ' + uploadResult.error },
+        { status: 500 }
+      )
+    }
+
+    // Convert to base64 for Grok API
+    const imageBase64 = imageToBase64(processedImage.buffer)
+
+    // Get country for leaderboard
+    const countryCode = await getCountryFromIP(clientIP)
+
+    // Call Grok API (free tier)
+    const grokResult = await analyseWithGrok(imageBase64, 'image/jpeg', 'free')
+
+    if (!grokResult.success || !grokResult.result) {
+      // Clean up R2 file on error
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cleanup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: uploadResult.key })
+      }).catch(() => {}) // Ignore cleanup errors
+
+      return NextResponse.json(
+        { error: 'AI analysis failed: ' + (grokResult.error?.error || 'Unknown error') },
+        { status: 500 }
+      )
+    }
+
+    const analysis = grokResult.result
+
+    // Store analysis in database
+    const { data: storedAnalysis, error: dbError } = await supabaseAdmin
+      .from('analyses')
+      .insert({
+        session_id: sessionId,
+        ip_hash: ipHash,
+        country_code: countryCode,
+        r2_key: uploadResult.key,
+        overall_score: analysis.overallScore,
+        symmetry_score: analysis.symmetryScore,
+        golden_ratio_score: analysis.goldenRatioScore,
+        bone_structure_score: analysis.boneStructureScore,
+        harmony_score: analysis.harmonyScore,
+        skin_score: analysis.skinScore,
+        dimorphism_score: analysis.dimorphismScore,
+        percentile: analysis.percentile,
+        category: analysis.category,
+        summary: analysis.summary,
+        strengths: analysis.strengths,
+        weakest_dimension: analysis.weakestDimension,
+        free_tip: analysis.freeTip,
+        premium_hook: analysis.premiumHook,
+        // premium_tips not stored for free tier
+        photo_deleted_at: null
+      })
+      .select('id, created_at')
+      .single()
+
+    if (dbError) {
+      console.error('Database error:', dbError)
+      // Clean up R2 file on error
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cleanup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: uploadResult.key })
+      }).catch(() => {})
+
+      return NextResponse.json(
+        { error: 'Failed to save analysis' },
+        { status: 500 }
+      )
+    }
+
+    // Return free-tier response (no premium content)
+    const response = {
+      id: storedAnalysis.id,
+      overallScore: analysis.overallScore,
+      symmetryScore: analysis.symmetryScore,
+      goldenRatioScore: analysis.goldenRatioScore,
+      boneStructureScore: analysis.boneStructureScore,
+      harmonyScore: analysis.harmonyScore,
+      skinScore: analysis.skinScore,
+      dimorphismScore: analysis.dimorphismScore,
+      percentile: analysis.percentile,
+      category: analysis.category,
+      summary: analysis.summary,
+      strengths: analysis.strengths,
+      weakestDimension: analysis.weakestDimension,
+      freeTip: analysis.freeTip,
+      premiumHook: analysis.premiumHook,
+      countryCode,
+      createdAt: storedAnalysis.created_at
+    }
+
+    return NextResponse.json(response)
+
+  } catch (error) {
+    console.error('Analysis endpoint error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

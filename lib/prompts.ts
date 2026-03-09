@@ -95,5 +95,4 @@ IMPORTANT:
  */
 export function getPromptForTier(tier: 'free' | 'premium'): GrokPrompt {
   return tier === 'premium' ? getPremiumTierPrompt() : getFreeTierPrompt()
-}</content>
-<parameter name="filePath">/Users/0t41k1/Documents/soundarya/lib/prompts.ts
+}
