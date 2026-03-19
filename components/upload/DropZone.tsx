@@ -87,31 +87,31 @@ export function DropZone({ onResult }: DropZoneProps) {
     <div
       {...getRootProps()}
       className={`
-        relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+        relative border border-dashed p-8 sm:p-10 text-center cursor-pointer transition-all bg-gold/5 rounded-sm
         ${isDragActive
-          ? 'border-blue-400 bg-blue-50'
-          : 'border-gray-300 hover:border-gray-400'
+          ? 'border-gold bg-gold/10 scale-[1.01]'
+          : 'border-border/30 hover:border-gold hover:bg-gold/10'
         }
       `}
     >
       <input {...getInputProps()} />
-      <div className="space-y-4">
-        <div className="mx-auto w-12 h-12 text-gray-400">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+      <div className="space-y-5">
+        <div className="mx-auto w-14 h-14 border border-border rounded-full flex items-center justify-center text-gold transition-all">
+          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         </div>
         <div>
-          <p className="text-lg font-medium text-gray-900">
-            {isDragActive ? 'Drop your photo here' : 'Upload your photo'}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Drag and drop or click to select a photo (JPEG, PNG, WebP, max 10MB)
+          <h3 className="font-serif text-xl sm:text-2xl font-light text-text mb-2 tracking-wide">
+            {isDragActive ? 'Drop your photo here' : 'Drop your photo here'}
+          </h3>
+          <p className="text-[10px] tracking-[0.14em] uppercase text-muted mt-1">
+            or click to browse · JPEG, PNG, WEBP · Max 10MB
           </p>
         </div>
         <button
           type="button"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="btn-secondary inline-block"
         >
           Choose File
         </button>
@@ -132,20 +132,18 @@ function LoadingStages({ currentStage }: { currentStage: LoadingStage }) {
   const currentIndex = stages.findIndex(stage => stage.key === currentStage)
 
   return (
-    <div className="flex flex-col items-center space-y-6 p-8">
-      <div className="text-6xl animate-pulse">
-        {stages[currentIndex]?.icon || '⏳'}
-      </div>
+    <div className="flex flex-col items-center space-y-6 p-8 sm:p-10 bg-card border border-border rounded-sm">
+      <div className="w-16 h-16 border border-border border-t-gold rounded-full animate-spin"></div>
       <div className="text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="font-serif text-xl font-light text-gold mb-3 tracking-wide">
           {stages[currentIndex]?.label || 'Processing...'}
         </h3>
-        <div className="flex space-x-2 justify-center">
+        <div className="flex space-x-3 justify-center">
           {stages.map((stage, index) => (
             <div
               key={stage.key}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index <= currentIndex ? 'bg-blue-500' : 'bg-gray-300'
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
+                index <= currentIndex ? 'bg-gold scale-125' : 'bg-border/30'
               }`}
             />
           ))}
@@ -157,15 +155,15 @@ function LoadingStages({ currentStage }: { currentStage: LoadingStage }) {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="text-center p-8 space-y-4">
-      <div className="text-red-500 text-6xl">⚠️</div>
+    <div className="text-center p-8 sm:p-10 space-y-6 bg-card border border-border rounded-sm">
+      <div className="w-16 h-16 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-500 text-3xl">⚠️</div>
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Analysis Failed</h3>
-        <p className="text-sm text-gray-600">{message}</p>
+        <h3 className="font-serif text-2xl font-light text-text mb-2 tracking-wide">Analysis Failed</h3>
+        <p className="text-[11px] tracking-[0.05em] text-muted max-w-xs mx-auto">{message}</p>
       </div>
       <button
         onClick={onRetry}
-        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="btn-secondary inline-block"
       >
         Try Again
       </button>

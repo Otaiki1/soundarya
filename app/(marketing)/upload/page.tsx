@@ -27,24 +27,25 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Discover Your Soundarya
+    <div className="page-shell">
+      <div className="section-shell max-w-3xl">
+        <div className="text-center mb-12 sm:mb-14">
+          <p className="eyebrow mb-4">Analysis</p>
+          <h1 className="heading-display text-[clamp(2rem,4vw,3.25rem)] text-text mb-4">
+            Discover Your <em className="text-gold">Soundarya</em>
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm text-soft max-w-xl mx-auto leading-relaxed">
             Upload a photo to get your personalized beauty analysis powered by AI
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="surface-card p-2 sm:p-3">
           <DropZone onResult={handleAnalysisResult} />
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-[11px] text-soft/80 space-y-2">
           <p>Your photos are processed securely and deleted within 1 hour.</p>
-          <p className="mt-1">Free analysis includes basic scores and tips.</p>
+          <p className="text-gold/80">Free analysis includes basic scores and tips.</p>
         </div>
       </div>
 

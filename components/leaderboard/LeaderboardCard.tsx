@@ -6,11 +6,11 @@ interface LeaderboardCardProps {
 }
 
 export function LeaderboardCard({ entry, showCountry = false }: LeaderboardCardProps) {
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return 'text-yellow-600 bg-yellow-50'
-    if (rank === 2) return 'text-gray-600 bg-gray-50'
-    if (rank === 3) return 'text-orange-600 bg-orange-50'
-    return 'text-gray-600 bg-gray-50'
+  const getRankStyle = (rank: number) => {
+    if (rank === 1) return 'border-gold/30 bg-gold/5'
+    if (rank === 2) return 'border-white/10 bg-white/5'
+    if (rank === 3) return 'border-white/10 bg-white/5'
+    return 'border-white/5 bg-transparent'
   }
 
   const getRankIcon = (rank: number) => {
@@ -21,42 +21,52 @@ export function LeaderboardCard({ entry, showCountry = false }: LeaderboardCardP
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className={`flex items-center justify-center w-12 h-12 rounded-full ${getRankColor(entry.rank)}`}>
-            <span className="text-lg font-bold">
-              {getRankIcon(entry.rank)}
-            </span>
+    <div className={`group border p-5 sm:p-6 transition-all hover:bg-white/2 ${getRankStyle(entry.rank)}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-8">
+        <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+          <div className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full border border-white/10 bg-deep text-lg font-serif">
+            {getRankIcon(entry.rank)}
           </div>
 
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-semibold text-gray-900">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+              <h3 className="text-lg sm:text-xl font-serif tracking-wide text-text truncate">
                 {entry.displayName}
               </h3>
               {showCountry && entry.countryCode && (
-                <span className="text-sm text-gray-500">
+                <span className="text-[10px] tracking-[0.2em] text-muted uppercase opacity-60">
                   {entry.countryCode}
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-4 mt-1">
-              <span className="text-2xl font-bold text-blue-600">
-                {entry.overallScore.toFixed(1)}
-              </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-3xl text-gold leading-none">
+                  {entry.overallScore.toFixed(1)}
+                </span>
+                <span className="text-[10px] text-muted tracking-wide uppercase">Score</span>
+              </div>
+              
+              <div className="h-4 w-px bg-white/10 hidden md:block"></div>
+              
+              <span className="text-[10px] tracking-[0.12em] uppercase text-muted py-1 px-2.5 border border-white/5 bg-white/5 rounded-sm">
                 {entry.category}
               </span>
-              <span className="text-sm text-gray-600">
+              
+              <span className="text-[10px] tracking-[0.12em] text-muted uppercase">
                 Top {entry.percentile}%
               </span>
             </div>
           </div>
         </div>
 
-        <div className="text-right text-sm text-gray-500">
-          {new Date(entry.createdAt).toLocaleDateString()}
+        <div className="text-[10px] tracking-[0.16em] text-muted uppercase opacity-60 sm:text-right shrink-0">
+          {new Date(entry.createdAt).toLocaleDateString(undefined, { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          })}
         </div>
       </div>
     </div>

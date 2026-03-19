@@ -12,101 +12,97 @@ export function ResultModal({ result, isOpen, onClose, onViewFullReport }: Resul
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+    <div className="fixed inset-0 z-1000 flex items-center justify-center p-6">
+      {/* Background overlay */}
+      <div
+        className="fixed inset-0 bg-deep/95 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal panel */}
+      <div className="relative bg-card border border-white/5 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl transition-all animate-[fadeUp_0.5s_ease-out] rounded-sm">
+        <button
           onClick={onClose}
-        />
+          className="absolute top-6 right-6 w-10 h-10 border border-white/10 text-muted hover:border-gold hover:text-gold flex items-center justify-center transition-all z-20"
+        >
+          ✕
+        </button>
 
-        {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Your Soundarya Analysis
-                  </h3>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+        {/* Header */}
+        <div className="p-6 sm:p-8 lg:p-10 border-b border-white/5">
+          <div className="eyebrow mb-3 opacity-80">Your Soundarya Report</div>
+          <h2 className="font-serif text-3xl lg:text-4xl font-light text-text leading-tight">
+            Overall Score: <span className="text-gold">{result.overallScore.toFixed(1)}</span>/10
+          </h2>
+          <p className="mt-3 text-[10px] tracking-[0.15em] uppercase text-muted">Top {result.percentile}% Percentile</p>
+        </div>
 
-                {/* Score display */}
-                <div className="text-center mb-6">
-                  <div className="text-6xl font-bold text-blue-600 mb-2">
-                    {result.overallScore.toFixed(1)}
-                  </div>
-                  <div className="text-sm text-gray-500">out of 10</div>
-                  <div className="text-sm font-medium text-gray-700 mt-1">
-                    {result.category}
-                  </div>
-                </div>
+        {/* Body */}
+        <div className="p-6 sm:p-8 lg:p-10 space-y-8">
+          {/* Quick Metrics */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'Overall', val: result.overallScore.toFixed(1), max: '10' },
+              { label: 'Symmetry', val: result.symmetryScore, max: '100' },
+              { label: 'Golden Ratio', val: result.goldenRatioScore, max: '100' },
+              { label: 'Bone Structure', val: result.boneStructureScore, max: '100' }
+            ].map((s, i) => (
+              <div key={i} className="bg-surface border border-white/5 p-5 flex flex-col items-center text-center rounded-sm">
+                <div className="text-[9px] tracking-[0.2em] uppercase text-muted mb-3 opacity-60">{s.label}</div>
+                <div className="font-serif text-3xl font-light text-gold leading-none mb-1">{s.val}</div>
+                <div className="text-[10px] text-muted opacity-30">/ {s.max}</div>
+              </div>
+            ))}
+          </div>
 
-                {/* Summary */}
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-                  <p className="text-sm text-gray-600">{result.summary}</p>
-                </div>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Analysis Findings</h3>
+                <p className="text-sm leading-relaxed text-soft tracking-wide">{result.summary}</p>
+              </div>
 
-                {/* Strengths */}
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Strengths</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    {result.strengths.map((strength, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="text-green-500 mr-2">✓</span>
-                        {strength}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div>
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Key Strengths</h3>
+                <ul className="space-y-3">
+                  {result.strengths.map((s, i) => (
+                    <li key={i} className="text-xs text-muted flex gap-4 items-start">
+                      <span className="text-gold mt-1 text-[8px]">✦</span>
+                      <span className="leading-relaxed">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
-                {/* Free tip */}
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Quick Tip</h4>
-                  <p className="text-sm text-gray-600">{result.freeTip}</p>
-                </div>
-
-                {/* Premium hook */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg mb-4">
-                  <h4 className="font-medium text-purple-900 mb-2">Unlock Full Report</h4>
-                  <p className="text-sm text-purple-700 mb-3">{result.premiumHook}</p>
-                  <div className="text-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      20 detailed beauty tips • $19
-                    </span>
-                  </div>
-                </div>
+            <div className="space-y-6">
+              <div className="p-6 bg-white/2 border border-white/5 rounded-sm">
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Immediate Tip</h3>
+                <p className="text-sm leading-relaxed text-soft tracking-wide italic">"{result.freeTip}"</p>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              onClick={onViewFullReport}
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              View Full Report
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Close
-            </button>
+          {/* Premium Hook */}
+          <div className="bg-gold/5 border border-gold/20 p-6 sm:p-8 text-center rounded-sm">
+            <h4 className="font-serif text-2xl sm:text-3xl text-gold-light mb-3">Unlock Your Full Potential</h4>
+            <p className="text-sm text-soft max-w-xl mx-auto mb-6 leading-relaxed">
+              {result.premiumHook}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={onViewFullReport}
+                className="btn-primary shadow-xl"
+              >
+                Get 20 Personalised Tips — $19
+              </button>
+              <button
+                onClick={onClose}
+                className="btn-secondary text-muted hover:text-gold"
+              >
+                Close Report
+              </button>
+            </div>
           </div>
         </div>
       </div>

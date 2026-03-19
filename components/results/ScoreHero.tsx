@@ -6,29 +6,32 @@ interface ScoreHeroProps {
 
 export function ScoreHero({ analysis }: ScoreHeroProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-      <div className="mb-6">
-        <div className="text-7xl font-bold text-blue-600 mb-2">
+    <div className="surface-card p-6 sm:p-8 lg:p-10 text-center relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 blur-[120px] -z-10 rounded-full opacity-50"></div>
+      
+      <div className="mb-8">
+        <p className="eyebrow mb-4 opacity-80">Your Soundarya Score</p>
+        <div className="font-serif text-[clamp(3.5rem,12vw,8rem)] font-light text-gold leading-none mb-3">
           {analysis.overallScore.toFixed(1)}
         </div>
-        <div className="text-xl text-gray-500 mb-2">out of 10</div>
-        <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+        <div className="text-[11px] text-muted tracking-[0.2em] uppercase mb-6 opacity-70">out of 10</div>
+        <div className="inline-flex items-center px-5 py-2 border border-gold/20 text-[10px] tracking-[0.2em] uppercase text-gold bg-gold/5 rounded-sm">
           {analysis.category}
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="text-2xl font-semibold text-gray-900 mb-2">
-          Top {analysis.percentile}% of Faces
+      <div className="mb-8">
+        <div className="font-serif text-2xl lg:text-4xl font-light text-text mb-3 leading-tight">
+          Top <em className="text-gold">{analysis.percentile}%</em> of Analyzed Faces
         </div>
-        <div className="text-sm text-gray-600">
-          Based on analysis of thousands of faces worldwide
-        </div>
+        <p className="text-[10px] tracking-[0.16em] text-muted uppercase opacity-60">
+          Global Aesthetic Ranking
+        </p>
       </div>
 
-      <div className="max-w-2xl mx-auto">
-        <p className="text-gray-700 leading-relaxed">
-          {analysis.summary}
+      <div className="max-w-3xl mx-auto border-t border-white/5 pt-6 sm:pt-8">
+        <p className="text-sm sm:text-base leading-relaxed text-soft tracking-wide font-light italic">
+          "{analysis.summary}"
         </p>
       </div>
     </div>
