@@ -7,13 +7,15 @@ import type { AnalysisPublic, LoadingStage } from '@/types/analysis'
 type DropZoneState = 'idle' | 'uploading' | 'analysing' | 'error'
 
 interface DropZoneProps {
-  onResult: (data: AnalysisPublic) => void
+  onResult?: (data: AnalysisPublic) => void
+  onAnalysisComplete?: (data: AnalysisPublic) => void
 }
 
-export function DropZone({ onResult }: DropZoneProps) {
+export function DropZone({ onResult, onAnalysisComplete }: DropZoneProps) {
   const [state, setState] = useState<DropZoneState>('idle')
   const [progress, setProgress] = useState<LoadingStage>('detecting')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const handleResult = onResult ?? onAnalysisComplete
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -54,14 +56,16 @@ export function DropZone({ onResult }: DropZoneProps) {
       }
 
       const data: AnalysisPublic = await res.json()
-      onResult(data)
+      if (handleResult) {
+        handleResult(data)
+      }
     } catch (err) {
       setState('error')
       setErrorMessage(err instanceof Error ? err.message : 'Analysis failed. Please try again.')
     } finally {
       clearInterval(interval)
     }
-  }, [onResult])
+  }, [handleResult])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -86,35 +90,39 @@ export function DropZone({ onResult }: DropZoneProps) {
   return (
     <div
       {...getRootProps()}
+      role="button"
+      tabIndex={0}
+      aria-label="Upload photo for beauty analysis"
       className={`
         relative border border-dashed p-8 sm:p-10 text-center cursor-pointer transition-all bg-gold/5 rounded-sm
         ${isDragActive
           ? 'border-gold bg-gold/10 scale-[1.01]'
           : 'border-border/30 hover:border-gold hover:bg-gold/10'
         }
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-deep
       `}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps()} aria-hidden="true" />
       <div className="space-y-5">
-        <div className="mx-auto w-14 h-14 border border-border rounded-full flex items-center justify-center text-gold transition-all">
+        <div className="mx-auto w-14 h-14 border border-border rounded-full flex items-center justify-center text-gold transition-all group-hover:border-gold">
           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         </div>
         <div>
           <h3 className="font-serif text-xl sm:text-2xl font-light text-text mb-2 tracking-wide">
-            {isDragActive ? 'Drop your photo here' : 'Drop your photo here'}
+            {isDragActive ? 'Drop your photo now' : 'Drop your photo here'}
           </h3>
           <p className="text-[10px] tracking-[0.14em] uppercase text-muted mt-1">
             or click to browse · JPEG, PNG, WEBP · Max 10MB
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-secondary inline-block"
+        <div 
+          className="btn-secondary inline-block pointer-events-none group-hover:bg-gold/10 group-hover:border-gold"
+          aria-hidden="true"
         >
           Choose File
-        </button>
+        </div>
       </div>
     </div>
   )

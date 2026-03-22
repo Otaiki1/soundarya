@@ -34,49 +34,40 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="page-shell">
-      <div className="section-shell max-w-5xl">
-        <div className="text-center mb-12 sm:mb-16">
-          <p className="eyebrow mb-4">Rankings</p>
-          <h1 className="heading-display text-[clamp(2rem,4vw,3.75rem)] text-text mb-5">
-            Beauty <em className="text-gold">Leaderboard</em>
-          </h1>
-          <p className="text-soft text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            See how you rank among thousands of beauty analyses from around the world.
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="surface-card p-6 sm:p-8 mb-8 sm:mb-10">
-          <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
-            <div className="flex-1">
-              <label className="block eyebrow mb-3">
-                Leaderboard Type
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as 'global' | 'country')}
-                className="w-full bg-surface border border-white/10 text-text text-xs tracking-wide uppercase px-4 py-3 focus:outline-none focus:border-gold transition-colors appearance-none cursor-pointer rounded-sm"
-              >
-                <option value="global">Global Rankings</option>
-                <option value="country">By Country</option>
-              </select>
-            </div>
-
+    <div className="page-shell pt-32 sm:pt-40">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-16 sm:mb-24 reveal">
+          <div className="max-w-2xl">
+            <p className="eyebrow mb-6">Rankings</p>
+            <h1 className="font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] font-light text-text">
+              The Global <br />
+              <em className="text-gold italic">Aesthetic Index</em>
+            </h1>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-x-12 gap-y-6 border-b border-border-light pb-4">
+            <button
+              onClick={() => setType('global')}
+              className={`text-[10px] tracking-[0.25em] uppercase transition-all ${type === 'global' ? 'text-gold border-b border-gold -mb-[17px] pb-4' : 'text-muted hover:text-text'}`}
+            >
+              Global
+            </button>
+            <button
+              onClick={() => setType('country')}
+              className={`text-[10px] tracking-[0.25em] uppercase transition-all ${type === 'country' ? 'text-gold border-b border-gold -mb-[17px] pb-4' : 'text-muted hover:text-text'}`}
+            >
+              By Country
+            </button>
+            
             {type === 'country' && (
-              <div className="flex-1">
-                <label className="block eyebrow mb-3">
-                  Country Code
-                </label>
-                <input
-                  type="text"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                  placeholder="e.g. US, IN, GB"
-                  className="w-full bg-surface border border-white/10 text-text text-xs tracking-wide uppercase px-4 py-3 focus:outline-none focus:border-gold transition-colors placeholder:text-muted/20 rounded-sm"
-                  maxLength={2}
-                />
-              </div>
+              <input
+                type="text"
+                value={country}
+                onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                placeholder="Region Code (US, IN...)"
+                className="bg-transparent border-none text-[10px] tracking-[0.25em] uppercase text-gold placeholder:text-muted/30 focus:outline-none w-40"
+                maxLength={2}
+              />
             )}
           </div>
         </div>

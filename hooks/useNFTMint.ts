@@ -21,6 +21,17 @@ interface MintSignatureResponse {
     mintPrice: string;
 }
 
+type ContractScoreData = {
+    overallScore: bigint;
+    symmetry: bigint;
+    goldenRatio: bigint;
+    boneStructure: bigint;
+    harmony: bigint;
+    skinQuality: bigint;
+    dimorphism: bigint;
+    percentile: bigint;
+};
+
 interface NFTMintResult {
     tokenId?: string;
     txHash?: string;
@@ -64,6 +75,16 @@ export function useNFTMint(analysisId: string) {
 
             const { signature, scoreData, mintPrice } =
                 (await signatureRes.json()) as MintSignatureResponse;
+            const contractScoreData: ContractScoreData = {
+                overallScore: BigInt(scoreData.overallScore),
+                symmetry: BigInt(scoreData.symmetry),
+                goldenRatio: BigInt(scoreData.goldenRatio),
+                boneStructure: BigInt(scoreData.boneStructure),
+                harmony: BigInt(scoreData.harmony),
+                skinQuality: BigInt(scoreData.skinQuality),
+                dimorphism: BigInt(scoreData.dimorphism),
+                percentile: BigInt(scoreData.percentile),
+            };
 
             // Step 2: Call smart contract to mint
             writeContract(
@@ -108,7 +129,7 @@ export function useNFTMint(analysisId: string) {
                     address: (process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS ||
                         "") as `0x${string}`,
                     functionName: "mintScore",
-                    args: [scoreData, signature as `0x${string}`],
+                    args: [contractScoreData, signature as `0x${string}`],
                     value: parseEther(mintPrice),
                 },
                 {
@@ -165,7 +186,7 @@ export function useNFTMint(analysisId: string) {
                 },
             );
 
-            return { txHash };
+            return { txHash: txHash ?? undefined };
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "Unknown error";

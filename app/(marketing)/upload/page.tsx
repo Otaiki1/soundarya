@@ -27,25 +27,42 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="page-shell">
-      <div className="section-shell max-w-3xl">
-        <div className="text-center mb-12 sm:mb-14">
-          <p className="eyebrow mb-4">Analysis</p>
-          <h1 className="heading-display text-[clamp(2rem,4vw,3.25rem)] text-text mb-4">
-            Discover Your <em className="text-gold">Soundarya</em>
-          </h1>
-          <p className="text-sm text-soft max-w-xl mx-auto leading-relaxed">
-            Upload a photo to get your personalized beauty analysis powered by AI
-          </p>
-        </div>
+    <div className="page-shell pt-32 sm:pt-40">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+          <div className="reveal">
+            <p className="eyebrow mb-6">Computational Analysis</p>
+            <h1 className="font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] font-light text-text mb-8">
+              Submit Your <br />
+              <em className="text-gold italic">Portrait</em>
+            </h1>
+            <p className="text-base lg:text-lg text-soft max-w-xl leading-relaxed font-light tracking-wide mb-12">
+              Our analysis requires a clear, front-facing image to evaluate facial geometry across 68 structural markers. 
+              Results are calculated with scientific precision based on symmetry and golden ratio alignment.
+            </p>
+            
+            <div className="space-y-6 border-l border-border-light pl-8">
+              <div>
+                <h4 className="text-[10px] tracking-[0.2em] uppercase text-gold mb-2">Privacy First</h4>
+                <p className="text-xs text-muted font-light leading-relaxed">
+                  Your biometric data is processed in a secure ephemeral environment and deleted automatically.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-[10px] tracking-[0.2em] uppercase text-gold mb-2">Technical Guidance</h4>
+                <p className="text-xs text-muted font-light leading-relaxed">
+                  Avoid heavy filters or angled shots for the most precise harmonic calibration.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <div className="surface-card p-2 sm:p-3">
-          <DropZone onResult={handleAnalysisResult} />
-        </div>
-
-        <div className="mt-8 text-center text-[11px] text-soft/80 space-y-2">
-          <p>Your photos are processed securely and deleted within 1 hour.</p>
-          <p className="text-gold/80">Free analysis includes basic scores and tips.</p>
+          <div className="reveal lg:mt-12">
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gold/5 blur-3xl rounded-full opacity-0 group-hover:opacity-50 transition-opacity"></div>
+              <DropZone onResult={handleAnalysisResult} />
+            </div>
+          </div>
         </div>
       </div>
 
