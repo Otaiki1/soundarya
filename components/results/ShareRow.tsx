@@ -1,86 +1,152 @@
-'use client'
-import { useState } from 'react'
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
+import { MintScoreModal } from "@/components/web3/MintScoreModal";
+import { useSubscribe } from "@/hooks/useSubscribe";
+import type { AnalysisPublic } from "@/types/analysis";
 
 interface ShareRowProps {
-  analysisId: string
+    analysis: AnalysisPublic;
 }
 
-export function ShareRow({ analysisId }: ShareRowProps) {
-  const [copied, setCopied] = useState(false)
-  
-  // Safe way to get origin on client
-  const getOrigin = () => {
-    if (typeof window !== 'undefined') return window.location.origin
-    return ''
-  }
-  
-  const shareUrl = `${getOrigin()}/analyse/${analysisId}`
+export function ShareRow({ analysis }: ShareRowProps) {
+    const router = useRouter();
+    const { isConnected } = useAccount();
+    const { isSubscribed } = useSubscribe();
+    const [copied, setCopied] = useState(false);
+    const [isMintModalOpen, setIsMintModalOpen] = useState(false);
+    const [timeLeft, setTimeLeft] = useState<string>("");
+    const [canRescan, setCanRescan] = useState(false);
 
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      const textArea = document.createElement('textarea')
-      textArea.value = shareUrl
-      document.body.appendChild(textArea)
-      textArea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textArea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
+    const analysisId = analysis.id;
+    const createdAt = new Date(analysis.createdAt).getTime();
+    const nextScanAt = createdAt + 7 * 24 * 60 * 60 * 1000; // 7 days later
 
-  const handleShareTwitter = () => {
-    const text = `Check out my Soundarya beauty analysis! 👀`
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`
-    window.open(url, '_blank')
-  }
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = Date.now();
+            const diff = nextScanAt - now;
 
-  const handleShareWhatsApp = () => {
-    const text = `Check out my Soundarya beauty analysis! ${shareUrl}`
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
-    window.open(url, '_blank')
-  }
+            if (diff <= 0) {
+                setCanRescan(true);
+                setTimeLeft("");
+                clearInterval(timer);
+            } else {
+                setCanRescan(false);
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+            }
+        }, 1000);
 
-  return (
-    <div className="surface-card p-6 sm:p-8 lg:p-10">
-      <div className="mb-6 sm:mb-8">
-        <p className="eyebrow mb-3 opacity-80">Community</p>
-        <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
-          Share Your <em className="text-gold">Results</em>
-        </h3>
-      </div>
+        return () => clearInterval(timer);
+    }, [nextScanAt]);
 
-      <div className="grid sm:grid-cols-3 gap-3 mb-8 sm:mb-10">
-        {[
-          { label: copied ? 'Copied' : 'Copy Link', icon: copied ? '✓' : '🔗', action: handleCopyLink, active: copied },
-          { label: 'Twitter', icon: '𝕏', action: handleShareTwitter },
-          { label: 'WhatsApp', icon: '💬', action: handleShareWhatsApp }
-        ].map((btn, i) => (
-          <button
-            key={i}
-            onClick={btn.action}
-            className={`flex items-center justify-center gap-3 px-4 py-3 border text-[10px] tracking-[0.16em] uppercase transition-all rounded-sm ${btn.active ? 'border-gold text-gold bg-gold/5' : 'border-white/10 text-muted hover:border-gold hover:text-gold hover:bg-gold/5'}`}
-          >
-            <span className="text-base">{btn.icon}</span>
-            {btn.label}
-          </button>
-        ))}
-      </div>
+    // Safe way to get origin on client
+    const getOrigin = () => {
+        if (typeof window !== "undefined") return window.location.origin;
+        return "";
+    };
 
-      <div className="p-6 sm:p-8 border border-gold/20 bg-gold/5 text-center relative overflow-hidden group rounded-sm">
-        <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <div className="relative z-10">
-          <h4 className="font-serif text-2xl lg:text-3xl text-gold-light mb-3 font-light">Want the <em className="italic">Full Report?</em></h4>
-          <p className="text-sm leading-relaxed text-soft mb-6 max-w-xl mx-auto">Unlock 20 personalized beauty tips, precise feature mapping, and a detailed dimensional breakdown curated for your unique face.</p>
-          <button className="btn-primary shadow-[0_20px_40px_rgba(201,169,110,0.2)]">
-            Unlock Elite Tips — $19
-          </button>
+    const shareUrl = `${getOrigin()}/analyse/${analysisId}`;
+
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    return (
+        <div className="space-y-6 sm:space-y-8">
+            <div className="surface-card p-6 sm:p-8 lg:p-10">
+                <div className="mb-6 sm:mb-8">
+                    <p className="eyebrow mb-3 opacity-80">Community</p>
+                    <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
+                        Share Your <em className="text-gold">Results</em>
+                    </h3>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        onClick={handleCopyLink}
+                        className={`flex items-center justify-center gap-3 px-6 py-4 border text-[10px] tracking-[0.16em] uppercase transition-all rounded-sm ${copied ? "border-gold text-gold bg-gold/5" : "border-white/10 text-muted hover:border-gold hover:text-gold hover:bg-gold/5"}`}
+                    >
+                        <span className="text-base">{copied ? "✓" : "🔗"}</span>
+                        {copied ? "Copied" : "Copy Shared Report"}
+                    </button>
+                    
+                    <button
+                        onClick={() => setIsMintModalOpen(true)}
+                        className="flex items-center justify-center gap-3 px-6 py-4 border border-gold text-gold bg-gold/5 text-[10px] tracking-[0.16em] uppercase hover:bg-gold/10 transition-all rounded-sm"
+                    >
+                        <span className="text-base">✦</span>
+                        Mint Onchain NFT
+                    </button>
+
+                    <button
+                        onClick={() => router.push("/leaderboard")}
+                        className="flex items-center justify-center gap-3 px-6 py-4 border border-white/10 text-muted hover:border-gold hover:text-gold hover:bg-gold/5 text-[10px] tracking-[0.16em] uppercase transition-all rounded-sm"
+                    >
+                        <span className="text-base">🏆</span>
+                        View Leaderboard
+                    </button>
+                </div>
+            </div>
+
+            <div className="surface-card p-6 sm:p-8 lg:p-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <p className="eyebrow mb-3 opacity-80">Continuous Improvement</p>
+                        <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
+                            Track Your <em className="text-gold">Evolution</em>
+                        </h3>
+                        <p className="mt-4 text-sm text-soft font-light max-w-xl">
+                            Soundarya is designed for long-term tracking. Rescan every week to see how your facial harmony evolves with better grooming and health.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center p-8 bg-surface border border-white/5 min-w-[240px] rounded-sm">
+                        {!canRescan ? (
+                            <>
+                                <p className="text-[10px] tracking-[0.25em] text-muted uppercase mb-4">Next scan in</p>
+                                <div className="font-serif text-3xl text-gold mb-2">{timeLeft}</div>
+                                <div className="w-full h-1 bg-white/5 mt-4 relative overflow-hidden">
+                                    <div 
+                                        className="absolute inset-y-0 left-0 bg-gold/30 transition-all duration-1000"
+                                        style={{ width: `${Math.max(0, Math.min(100, (1 - (nextScanAt - Date.now()) / (7 * 24 * 60 * 60 * 1000)) * 100))}%` }}
+                                    ></div>
+                                </div>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => router.push("/")}
+                                className="w-full btn-gold py-4"
+                            >
+                                Rescan Now
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <MintScoreModal 
+                isOpen={isMintModalOpen}
+                onClose={() => setIsMintModalOpen(false)}
+                analysis={analysis}
+            />
         </div>
-      </div>
-    </div>
-  )
+    );
 }

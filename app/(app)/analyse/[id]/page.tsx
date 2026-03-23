@@ -64,22 +64,12 @@ export default async function AnalysePage({ params }: PageParams) {
   }
 
   return (
-    <div className="page-shell pt-32 sm:pt-40 pb-20">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-start">
-          <div className="reveal">
-            <ScoreHero analysis={clientAnalysis} />
-            <div className="mt-12 hidden lg:block">
-              <ShareRow analysisId={clientAnalysis.id} />
-            </div>
-          </div>
-          
-          <div className="reveal space-y-16">
-            <DimensionBars analysis={clientAnalysis} />
-            <div className="lg:hidden">
-              <ShareRow analysisId={clientAnalysis.id} />
-            </div>
-          </div>
+    <div className="page-shell">
+      <div className="section-shell max-w-5xl">
+        <div className="space-y-8 sm:space-y-10">
+          <ScoreHero analysis={clientAnalysis} />
+          <DimensionBars analysis={clientAnalysis} />
+          <ShareRow analysis={clientAnalysis} />
         </div>
       </div>
     </div>
