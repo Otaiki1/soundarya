@@ -1,16 +1,21 @@
 import { http, createConfig } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
-import { coinbaseWallet, metaMask, walletConnect } from "wagmi/connectors";
+import { coinbaseWallet, injected, walletConnect } from "wagmi/connectors";
+
+const walletConnectProjectId =
+    process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+const connectors = [
+    coinbaseWallet({ appName: "Soundarya" }),
+    injected(),
+    ...(walletConnectProjectId
+        ? [walletConnect({ projectId: walletConnectProjectId })]
+        : []),
+];
 
 export const config = createConfig({
     chains: [base, baseSepolia],
-    connectors: [
-        coinbaseWallet({ appName: "Soundarya" }),
-        metaMask(),
-        walletConnect({
-            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
-        }),
-    ],
+    connectors,
     transports: {
         [base.id]: http(),
         [baseSepolia.id]: http(),
