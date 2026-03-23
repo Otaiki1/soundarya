@@ -2,97 +2,106 @@
 import type { AnalysisPublic } from '@/types/analysis'
 
 interface ResultModalProps {
-  result?: AnalysisPublic | null
-  analysis?: AnalysisPublic | null
+  result: AnalysisPublic
   isOpen: boolean
   onClose: () => void
-  onViewFullReport?: () => void
+  onViewFullReport: () => void
 }
 
-export function ResultModal({
-  result,
-  analysis,
-  isOpen,
-  onClose,
-  onViewFullReport,
-}: ResultModalProps) {
-  const resolvedResult = result ?? analysis
-
-  if (!isOpen || !resolvedResult) return null
+export function ResultModal({ result, isOpen, onClose, onViewFullReport }: ResultModalProps) {
+  if (!isOpen) return null
 
   return (
-    <div className={`fixed inset-0 z-[1000] overflow-y-auto bg-deep transition-all duration-700 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className={`min-h-screen flex flex-col transition-transform duration-1000 ${isOpen ? 'translate-y-0' : 'translate-y-20'} var(--ease-expo)`}>
-        
-        {/* Navigation / Actions */}
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 w-full pt-8 sm:pt-12 flex justify-between items-center">
-          <div className="eyebrow opacity-60">Aesthetic Report</div>
-          <button
-            onClick={onClose}
-            className="group flex items-center gap-4 text-[10px] tracking-[0.3em] uppercase text-muted hover:text-gold transition-colors"
-          >
-            Close Index <span className="w-8 h-[1px] bg-border-light group-hover:bg-gold transition-colors"></span>
-          </button>
+    <div className="fixed inset-0 z-1000 flex items-center justify-center p-6">
+      {/* Background overlay */}
+      <div
+        className="fixed inset-0 bg-deep/95 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal panel */}
+      <div className="relative bg-card border border-white/5 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl transition-all animate-[fadeUp_0.5s_ease-out] rounded-sm">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 w-10 h-10 border border-white/10 text-muted hover:border-gold hover:text-gold flex items-center justify-center transition-all z-20"
+        >
+          ✕
+        </button>
+
+        {/* Header */}
+        <div className="p-6 sm:p-8 lg:p-10 border-b border-white/5">
+          <div className="eyebrow mb-3 opacity-80">Your Soundarya Report</div>
+          <h2 className="font-serif text-3xl lg:text-4xl font-light text-text leading-tight">
+            Overall Score: <span className="text-gold">{result.overallScore.toFixed(1)}</span>/10
+          </h2>
+          <p className="mt-3 text-[10px] tracking-[0.15em] uppercase text-muted">Top {result.percentile}% Percentile</p>
         </div>
 
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 w-full flex-1 py-16 sm:py-24 flex flex-col justify-center">
-          <div className="max-w-5xl mx-auto w-full">
-            <div className="grid lg:grid-cols-2 gap-20 items-center reveal">
-              {/* Left Score */}
-              <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-                <div className="font-serif text-[clamp(6rem,18vw,12rem)] leading-none text-gold font-light mb-4">
-                  {resolvedResult.overallScore.toFixed(1)}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] tracking-[0.3em] text-muted uppercase">OUT OF TOP</p>
-                  <p className="text-[10px] tracking-[0.3em] text-muted uppercase">{resolvedResult.percentile}TH PERCENTILE</p>
-                </div>
+        {/* Body */}
+        <div className="p-6 sm:p-8 lg:p-10 space-y-8">
+          {/* Quick Metrics */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'Overall', val: result.overallScore.toFixed(1), max: '10' },
+              { label: 'Symmetry', val: result.symmetryScore, max: '100' },
+              { label: 'Golden Ratio', val: result.goldenRatioScore, max: '100' },
+              { label: 'Bone Structure', val: result.boneStructureScore, max: '100' }
+            ].map((s, i) => (
+              <div key={i} className="bg-surface border border-white/5 p-5 flex flex-col items-center text-center rounded-sm">
+                <div className="text-[9px] tracking-[0.2em] uppercase text-muted mb-3 opacity-60">{s.label}</div>
+                <div className="font-serif text-3xl font-light text-gold leading-none mb-1">{s.val}</div>
+                <div className="text-[10px] text-muted opacity-30">/ {s.max}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Analysis Findings</h3>
+                <p className="text-sm leading-relaxed text-soft tracking-wide">{result.summary}</p>
               </div>
 
-              {/* Right Metrics */}
-              <div className="space-y-8">
-                {[
-                  { label: "Symmetry", val: resolvedResult.symmetryScore },
-                  { label: "Golden Ratio", val: resolvedResult.goldenRatioScore },
-                  { label: "Proportion", val: resolvedResult.harmonyScore },
-                  { label: "Harmony", val: resolvedResult.boneStructureScore },
-                ].map((item) => (
-                  <div key={item.label} className="relative group">
-                    <div className="flex justify-between items-end mb-2">
-                      <span className="text-[10px] tracking-[0.2em] text-muted uppercase opacity-40 group-hover:opacity-100 transition-opacity">
-                        {item.label}
-                      </span>
-                      <span className="text-[14px] text-gold font-serif opacity-40 group-hover:opacity-100 transition-opacity">
-                        {item.val}%
-                      </span>
-                    </div>
-                    <div className="h-[1px] bg-white/5 relative overflow-hidden">
-                      <div 
-                        className="absolute inset-y-0 left-0 bg-gold/50 w-full origin-left transition-transform duration-1000 ease-out"
-                        style={{ transform: `scaleX(${item.val / 100})` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="pt-8">
-                    <button
-                      onClick={onViewFullReport}
-                      disabled={!onViewFullReport}
-                      className="btn-gold-gradient w-full py-4 text-[10px]"
-                    >
-                      UNLOCK FULL EVALUATION — $19
-                    </button>
-                </div>
+              <div>
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Key Strengths</h3>
+                <ul className="space-y-3">
+                  {result.strengths.map((s, i) => (
+                    <li key={i} className="text-xs text-muted flex gap-4 items-start">
+                      <span className="text-gold mt-1 text-[8px]">✦</span>
+                      <span className="leading-relaxed">{s}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
-            {/* Quote / Insight Footer */}
-            <div className="mt-24 pt-12 border-t border-dashed border-white/5 text-center reveal">
-              <p className="text-sm text-soft italic font-light tracking-wide opacity-60 max-w-2xl mx-auto leading-relaxed">
-                "{resolvedResult.summary}"
-                <span className="ml-4 inline-flex items-center gap-2 opacity-40 not-italic">× ✦</span>
-              </p>
+            <div className="space-y-6">
+              <div className="p-6 bg-white/2 border border-white/5 rounded-sm">
+                <h3 className="font-serif text-2xl text-gold-light mb-3">Immediate Tip</h3>
+                <p className="text-sm leading-relaxed text-soft tracking-wide italic">"{result.freeTip}"</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Premium Hook */}
+          <div className="bg-gold/5 border border-gold/20 p-6 sm:p-8 text-center rounded-sm">
+            <h4 className="font-serif text-2xl sm:text-3xl text-gold-light mb-3">Unlock Your Full Potential</h4>
+            <p className="text-sm text-soft max-w-xl mx-auto mb-6 leading-relaxed">
+              {result.premiumHook}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={onViewFullReport}
+                className="btn-primary shadow-xl"
+              >
+                Pay with ETH to Unlock
+              </button>
+              <button
+                onClick={onClose}
+                className="btn-secondary text-muted hover:text-gold"
+              >
+                Close Report
+              </button>
             </div>
           </div>
         </div>

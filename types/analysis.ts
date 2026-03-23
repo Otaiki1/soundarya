@@ -18,7 +18,7 @@ export interface Analysis extends GrokAnalysisResult {
   premium_unlocked: boolean
   premium_tier: 'free' | 'premium' | 'elite'
   premium_tips?: string[]
-  stripe_payment_id?: string
+
 
   // Metadata
   country_code?: string
@@ -64,5 +64,5 @@ export interface AnalysisUpdatePremium {
   premium_unlocked: boolean
   premium_tier: 'premium' | 'elite'
   premium_tips: string[]
-  stripe_payment_id: string
+
 }

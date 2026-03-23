@@ -168,9 +168,9 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                   {analysisResult.premiumHook}
                 </p>
                 <button className="bg-gold text-deep px-8 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-gold-light transition-colors">
-                  Get 20 Personalised Tips — $19
+                  Pay with ETH to Unlock
                 </button>
-                <p className="text-[11px] text-muted mt-3">or $9.99/month for unlimited</p>
+                <p className="text-[11px] text-muted mt-3">or Subscribe with ETH for unlimited</p>
               </div>
             </div>
           </>

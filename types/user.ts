@@ -9,7 +9,7 @@ export interface UserProfile {
   country_code?: string
   avatar_url?: string
   subscription_tier: 'free' | 'premium' | 'elite'
-  stripe_customer_id?: string
+
   total_analyses: number
   best_score?: number
   created_at: string
@@ -33,7 +33,7 @@ export interface Subscription {
   id: string
   user_id: string
   tier: 'free' | 'premium' | 'elite'
-  stripe_subscription_id?: string
+
   status: 'active' | 'past_due' | 'cancelled'
   current_period_start?: string
   current_period_end?: string
