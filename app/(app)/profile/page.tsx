@@ -66,7 +66,7 @@ export default function ProfilePage() {
                         </div>
                         
                         <div className="surface-card p-8">
-                            <p className="text-[10px] tracking-[0.2em] uppercase text-muted mb-4">Subscription Status</p>
+                            <p className="text-[10px] tracking-[0.2em] uppercase text-muted mb-4">Onchain Access</p>
                             <div className="flex items-center gap-3">
                                 <span className={`w-2 h-2 rounded-full ${isSubscribed ? 'bg-gold animate-pulse' : 'bg-red-500'}`}></span>
                                 <p className="font-serif text-2xl text-text">

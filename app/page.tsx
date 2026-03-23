@@ -221,7 +221,7 @@ export default function Home() {
                                 primary: false,
                             },
                             {
-                                name: "Premium",
+                                name: "Unlocked",
                                 price: "19",
                                 features: [
                                     "All Free features",
