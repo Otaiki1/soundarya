@@ -40,8 +40,8 @@ export default function LeaderboardPage() {
           <div className="max-w-2xl">
             <p className="eyebrow mb-6">Rankings</p>
             <h1 className="font-serif text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] font-light text-text">
-              The Global <br />
-              <em className="text-gold italic">Aesthetic Index</em>
+              Top Scores <br />
+              <em className="text-gold italic">Globally</em>
             </h1>
           </div>
           
