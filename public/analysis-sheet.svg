@@ -1,0 +1,27 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#120D09"/>
+  <rect x="60" y="60" width="1080" height="780" stroke="#8A653A" stroke-opacity="0.45"/>
+  <rect x="110" y="110" width="980" height="680" fill="#17110D" stroke="#D1A86D" stroke-opacity="0.18"/>
+  <text x="150" y="190" fill="#E6C99F" font-family="Georgia, serif" font-size="72">Report Preview</text>
+  <text x="152" y="232" fill="#C1A27B" font-family="Arial, sans-serif" font-size="24" letter-spacing="8">HARMONY SCORE BREAKDOWN</text>
+  <text x="150" y="380" fill="#E4B676" font-family="Georgia, serif" font-size="180">8.3</text>
+  <text x="152" y="430" fill="#B89B73" font-family="Arial, sans-serif" font-size="26" letter-spacing="6">TOP 10 PERCENTILE</text>
+  <path d="M520 310H1010" stroke="#5D4325"/>
+  <path d="M520 390H1038" stroke="#5D4325"/>
+  <path d="M520 470H955" stroke="#5D4325"/>
+  <path d="M520 550H1080" stroke="#5D4325"/>
+  <path d="M520 310H972" stroke="#D4A86D" stroke-width="3"/>
+  <path d="M520 390H920" stroke="#D4A86D" stroke-width="3"/>
+  <path d="M520 470H860" stroke="#D4A86D" stroke-width="3"/>
+  <path d="M520 550H1015" stroke="#D4A86D" stroke-width="3"/>
+  <text x="520" y="288" fill="#D8C2A0" font-family="Arial, sans-serif" font-size="22" letter-spacing="4">SYMMETRY</text>
+  <text x="520" y="368" fill="#D8C2A0" font-family="Arial, sans-serif" font-size="22" letter-spacing="4">PROPORTION</text>
+  <text x="520" y="448" fill="#D8C2A0" font-family="Arial, sans-serif" font-size="22" letter-spacing="4">HARMONY</text>
+  <text x="520" y="528" fill="#D8C2A0" font-family="Arial, sans-serif" font-size="22" letter-spacing="4">STRUCTURE</text>
+  <text x="1046" y="318" fill="#E9CFAC" font-family="Georgia, serif" font-size="34">97%</text>
+  <text x="994" y="398" fill="#E9CFAC" font-family="Georgia, serif" font-size="34">82%</text>
+  <text x="934" y="478" fill="#E9CFAC" font-family="Georgia, serif" font-size="34">72%</text>
+  <text x="1094" y="558" fill="#E9CFAC" font-family="Georgia, serif" font-size="34" text-anchor="end">91%</text>
+  <rect x="150" y="600" width="890" height="1" fill="#5D4325"/>
+  <text x="150" y="690" fill="#D5C2A1" font-family="Georgia, serif" font-size="40" font-style="italic">“Clearer structure makes the product feel more trustworthy and premium.”</text>
+</svg>

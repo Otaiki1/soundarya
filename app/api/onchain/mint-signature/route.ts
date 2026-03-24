@@ -13,36 +13,38 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch analysis data
-        const { data: analysis, error } = await supabaseAdmin
+        const { data: analysisData, error: fetchError } = await supabaseAdmin
             .from("analyses")
             .select("*")
             .eq("id", analysisId)
             .single();
 
-        if (error || !analysis) {
+        if (fetchError || !analysisData) {
             return NextResponse.json(
                 { error: "Analysis not found" },
                 { status: 404 },
             );
         }
 
-        // Prepare score data for contract
+        // Convert UUID string to a BigInt for the contract analysisId
+        const numericAnalysisId = BigInt("0x" + analysisId.replace(/-/g, ""));
+
+        // Prepare ScoreData for the new SoundaryaScore contract
         const scoreData = {
-            overallScore: Math.floor(analysis.overall_score * 100), // Scale to avoid decimals
-            symmetry: Math.floor(analysis.symmetry_score * 100),
-            goldenRatio: Math.floor(analysis.golden_ratio_score * 100),
-            boneStructure: Math.floor(analysis.bone_structure_score * 100),
-            harmony: Math.floor(analysis.harmony_score * 100),
-            skinQuality: Math.floor(analysis.skin_score * 100),
-            dimorphism: Math.floor(analysis.dimorphism_score * 100),
-            percentile: analysis.percentile,
+            analysisId: numericAnalysisId.toString(),
+            nonce: Math.floor(Math.random() * 1000000).toString(), // Mock nonce for now
+            to: walletAddress,
+            score: Math.floor(analysisData.overall_score * 10).toString(),
+            dim0: Math.floor(analysisData.symmetry_score * 10).toString(),
+            dim1: Math.floor(analysisData.golden_ratio_score * 10).toString(),
+            dim2: Math.floor(analysisData.bone_structure_score * 10).toString(),
+            dim3: Math.floor(analysisData.harmony_score * 10).toString(),
+            dim4: Math.floor(analysisData.skin_score * 10).toString(),
+            dim5: Math.floor(analysisData.dimorphism_score * 10).toString(),
+            dim6: Math.floor(analysisData.percentile * 10).toString(),
         };
 
-        // In a real implementation, you would:
-        // 1. Sign the scoreData with your backend private key
-        // 2. Return a valid signature that the smart contract can verify
-
-        // For now, return mock signature
+        // Mock signature (In production, use Ethers/Viem to sign this data)
         const signature =
             "0x" +
             Buffer.from("mock-signature-" + analysisId)

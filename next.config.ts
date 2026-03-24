@@ -4,6 +4,14 @@ const nextConfig: NextConfig = {
     experimental: {
         serverActions: { bodySizeLimit: "10mb" },
     },
+    webpack: (config) => {
+        config.resolve.alias = {
+            ...(config.resolve.alias ?? {}),
+            "@react-native-async-storage/async-storage": false,
+        };
+
+        return config;
+    },
     images: {
         remotePatterns: [
             { protocol: "https", hostname: "uploads.soundarya.ai" },

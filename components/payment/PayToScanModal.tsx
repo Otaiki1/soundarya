@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { usePayForScan } from "@/hooks/usePayForScan";
+import { useMintScore } from "@/hooks/useMintScore";
 
 type ModalState = "CONNECT" | "CONFIRM" | "PAYING" | "SUCCESS";
 
@@ -21,7 +21,7 @@ export function PayToScanModal({
     const { address, isConnected } = useAccount();
     const { data: balance } = useBalance({ address, chainId: 8453 }); // Base chain ID
     const [state, setState] = useState<ModalState>("CONNECT");
-    const { pay, isLoading, isSuccess, error, txHash } = usePayForScan();
+    const { mint, isLoading, isSuccess, error, txHash } = useMintScore();
 
     const SCAN_PRICE = "0.001";
     const SCAN_PRICE_USD = "3.50";
@@ -43,7 +43,9 @@ export function PayToScanModal({
     }, [isLoading, isSuccess]);
 
     const handlePay = async () => {
-        await pay(SCAN_PRICE);
+        // In the new flow, we mint based on a specific analysisId.
+        // For the standalone modal, we'd need passed-in data or a placeholder.
+        await mint("placeholder-id");
     };
 
     const handleClose = () => {

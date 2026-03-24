@@ -1,41 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
-import { parseEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
+import { SOUNDARYA_SCORE_ADDRESS, SOUNDARYA_SCORE_ABI } from "@/lib/contracts";
 
 interface UseSubscribeResult {
-    subscribe: (subPrice?: string) => Promise<void>;
+    subscribeWeekly: () => Promise<void>;
+    subscribeMonthly: () => Promise<void>;
     isLoading: boolean;
     isSubscribed: boolean;
     expiry: number;
     error?: string;
     isSuccess: boolean;
+    weeklyPrice?: bigint;
+    monthlyPrice?: bigint;
+    onChainScores: bigint[];
 }
-
-// Minimal ABI for the payments contract
-const paymentsAbi = [
-    {
-        type: "function",
-        name: "subscribe",
-        inputs: [],
-        outputs: [],
-        stateMutability: "payable",
-    },
-    {
-        type: "function",
-        name: "isSubscribed",
-        inputs: [{ name: "user", type: "address" }],
-        outputs: [{ name: "", type: "bool" }],
-        stateMutability: "view",
-    },
-    {
-        type: "function",
-        name: "subscriptionExpiry",
-        inputs: [{ name: "user", type: "address" }],
-        outputs: [{ name: "", type: "uint256" }],
-        stateMutability: "view",
-    }
-] as const;
 
 export function useSubscribe(): UseSubscribeResult {
     const { address, isConnected } = useAccount();
@@ -44,21 +23,41 @@ export function useSubscribe(): UseSubscribeResult {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [verifiedHash, setVerifiedHash] = useState<`0x${string}` | null>(null);
 
-    const contractAddress = (process.env.NEXT_PUBLIC_SOUNDARYA_PAYMENTS_ADDRESS || "") as `0x${string}`;
-
+    // Read Subscription Details
     const { data: isSubscribedData, refetch: refetchIsSubscribed } = useReadContract({
-        address: contractAddress,
-        abi: paymentsAbi,
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
         functionName: "isSubscribed",
         args: address ? [address] : undefined,
         query: { enabled: !!address }
     });
 
     const { data: expiryData, refetch: refetchExpiry } = useReadContract({
-        address: contractAddress,
-        abi: paymentsAbi,
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
         functionName: "subscriptionExpiry",
+        args: address ? [address] : undefined,
+        query: { enabled: !!address }
+    });
+
+    const { data: weeklyPrice } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "weeklySubscriptionPrice",
+    });
+
+    const { data: monthlyPrice } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "monthlySubscriptionPrice",
+    });
+
+    const { data: onChainScores } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "getUserScores",
         args: address ? [address] : undefined,
         query: { enabled: !!address }
     });
@@ -71,7 +70,13 @@ export function useSubscribe(): UseSubscribeResult {
     });
 
     useEffect(() => {
-        if (isConfirmed && receipt && !isSuccess && writeData && !isLoading) {
+        if (
+            isConfirmed &&
+            receipt &&
+            writeData &&
+            writeData !== verifiedHash
+        ) {
+            setVerifiedHash(writeData);
             setIsLoading(true);
             (async () => {
                 try {
@@ -80,68 +85,120 @@ export function useSubscribe(): UseSubscribeResult {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             txHash: writeData,
-                            type: "subscription"
+                            type: "subscription",
+                            walletAddress: address,
                         }),
                     });
 
                     if (!res.ok) {
-                        throw new Error("Failed to verify subscription with backend");
+                        console.warn("Subscription mirrored onchain but backend sync failed");
                     }
-                    
+
                     const data = await res.json();
-                    queryClient.setQueryData(['paymentVerification', writeData], data);
-                    
-                    // Refetch read contracts to update UI state
-                    await Promise.all([refetchIsSubscribed(), refetchExpiry()]);
-                    setIsSuccess(true);
+                    queryClient.setQueryData(["paymentVerification", writeData], data);
                 } catch (err) {
-                    setError(err instanceof Error ? err.message : "Verification failed");
+                    console.warn("Subscription verification warning:", err);
                 } finally {
+                    const [subscriptionResult, expiryResult] = await Promise.all([
+                        refetchIsSubscribed(),
+                        refetchExpiry(),
+                    ]);
+
+                    const subscriptionActive = Boolean(subscriptionResult.data);
+
+                    if (subscriptionActive) {
+                        setError(null);
+                        setIsSuccess(true);
+                    } else if (
+                        typeof expiryResult.data === "bigint" &&
+                        Number(expiryResult.data) > 0
+                    ) {
+                        setError(null);
+                        setIsSuccess(true);
+                    } else {
+                        setError(
+                            "Subscription transaction confirmed, but the contract state has not refreshed yet. Please wait a moment and try again.",
+                        );
+                    }
+
                     setIsLoading(false);
                 }
             })();
         }
-    }, [isConfirmed, receipt, writeData, isSuccess, queryClient, refetchIsSubscribed, refetchExpiry, isLoading]);
+    }, [
+        address,
+        isConfirmed,
+        queryClient,
+        receipt,
+        refetchExpiry,
+        refetchIsSubscribed,
+        verifiedHash,
+        writeData,
+    ]);
 
     useEffect(() => {
         if (writeError) {
-            setError(writeError.message);
+            setError(writeError.message || "Transaction failed");
             setIsLoading(false);
         }
     }, [writeError]);
 
-    const subscribe = useCallback(async (subPrice: string = "0.01") => {
+    const subscribeWeekly = useCallback(async () => {
         if (!isConnected || !address) {
             setError("Wallet not connected");
+            return;
+        }
+        if (!weeklyPrice) {
+            setError("Price not loaded");
             return;
         }
 
         setIsLoading(true);
         setError(null);
         setIsSuccess(false);
+        setVerifiedHash(null);
 
         writeContract({
-            abi: paymentsAbi,
-            address: contractAddress,
-            functionName: "subscribe",
-            value: parseEther(subPrice),
-        }, {
-            onSuccess: () => {
-                // kept loading while waiting for receipt
-            },
-            onError: (err) => {
-                setError(`Transaction failed: ${err.message}`);
-                setIsLoading(false);
-            }
+            abi: SOUNDARYA_SCORE_ABI,
+            address: SOUNDARYA_SCORE_ADDRESS,
+            functionName: "subscribeWeekly",
+            value: weeklyPrice as bigint,
         });
-    }, [isConnected, address, writeContract, contractAddress]);
+    }, [isConnected, address, writeContract, weeklyPrice]);
+
+    const subscribeMonthly = useCallback(async () => {
+        if (!isConnected || !address) {
+            setError("Wallet not connected");
+            return;
+        }
+        if (!monthlyPrice) {
+            setError("Price not loaded");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setIsSuccess(false);
+        setVerifiedHash(null);
+
+        writeContract({
+            abi: SOUNDARYA_SCORE_ABI,
+            address: SOUNDARYA_SCORE_ADDRESS,
+            functionName: "subscribeMonthly",
+            value: monthlyPrice as bigint,
+        });
+    }, [isConnected, address, writeContract, monthlyPrice]);
 
     return {
-        subscribe,
+        subscribeWeekly,
+        subscribeMonthly,
         isLoading: isLoading || isWritePending || isConfirming,
         isSubscribed: Boolean(isSubscribedData),
         expiry: expiryData ? Number(expiryData) : 0,
         error: error ?? undefined,
-        isSuccess
+        isSuccess,
+        weeklyPrice: weeklyPrice as bigint | undefined,
+        monthlyPrice: monthlyPrice as bigint | undefined,
+        onChainScores: (onChainScores as bigint[]) ?? [],
     };
 }

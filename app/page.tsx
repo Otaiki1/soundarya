@@ -1,24 +1,209 @@
 "use client";
 
-import { useState, useRef } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { Navbar } from "@/components/ui/Navbar";
 import { AnalysisModal } from "@/components/upload/AnalysisModal";
-import { PayToScanModal } from "@/components/payment/PayToScanModal";
-import { useSubscribe } from "@/hooks/useSubscribe";
-import type { AnalysisPublic } from "@/types/analysis";
 import { getOrCreateSessionId } from "@/lib/session";
+import type { AnalysisPublic } from "@/types/analysis";
+
+const stats = [
+    { value: "68", label: "Facial landmarks mapped per portrait" },
+    { value: "7", label: "Scientific dimensions scored" },
+    { value: "< 60s", label: "From upload to full reading" },
+    { value: "Base", label: "Network — your score, onchain" },
+];
+
+const processSteps = [
+    {
+        number: "01",
+        label: "Natural light · Front-facing · No filters",
+        title: "Frame your portrait",
+        body: "One clear photograph is all Soundarya needs. No studio setup, no specialist equipment. Natural light, calm expression, facing the camera directly. The cleaner the photo, the more precise the reading.",
+    },
+    {
+        number: "02",
+        label: "AI scoring · 7 dimensions · Golden ratio",
+        title: "The analysis runs",
+        body: "Soundarya maps 68 facial landmarks and scores seven distinct dimensions — symmetry, proportion, harmony, bone structure, skin quality, dimorphism, and averageness — against the established science of facial attractiveness. The result takes under a minute.",
+    },
+    {
+        number: "03",
+        label: "Score · Percentile · Permanent proof",
+        title: "You receive your reading — and can own it forever",
+        body: "Your score, percentile rank, and full dimensional breakdown are ready immediately. With Premium, you unlock 20 personalised improvement observations. And with a single transaction on Base, your score becomes an immutable onchain credential — proof that is yours, forever.",
+    },
+];
+
+const dimensions = [
+    {
+        title: "Facial Symmetry",
+        body: "The bilateral balance of your features — the dimension most consistently correlated with perceived attractiveness across cultures and studies.",
+    },
+    {
+        title: "Golden Ratio",
+        body: "How closely your facial proportions adhere to the 1.618 ratio across your thirds, nose width, eye spacing, and lip-to-chin distance.",
+    },
+    {
+        title: "Bone Structure",
+        body: "Jawline definition, cheekbone prominence, brow ridge, chin projection. The architecture beneath the surface that no skincare routine changes.",
+    },
+    {
+        title: "Feature Harmony",
+        body: "How well your eyes, nose, lips, and jaw function as a unified aesthetic system — not individual parts, but a whole.",
+    },
+    {
+        title: "Skin Quality",
+        body: "Tone evenness, texture, and clarity — the surface signals visible in a well-framed portrait.",
+    },
+    {
+        title: "Sexual Dimorphism",
+        body: "The strength of masculine or feminine feature markers, calibrated specifically to your face type.",
+    },
+    {
+        title: "Averageness Index",
+        body: "A counterintuitive but well-established signal: closeness to population-averaged facial geometry correlates strongly with attractiveness.",
+    },
+];
+
+const onchainBenefits = [
+    {
+        title: "✦ Immutable proof",
+        body: "Your score as you earned it. Written to Base at the moment of minting. Permanent and unalterable.",
+    },
+    {
+        title: "✦ Travels with your wallet",
+        body: "Display it on any Web3 platform — Farcaster, OpenSea, any dApp that reads wallet contents. No integration needed.",
+    },
+    {
+        title: "✦ Compete with real credentials",
+        body: "The Soundarya leaderboard only accepts minted scores. Your NFT is your entry ticket — and the proof that your ranking is legitimate.",
+    },
+];
+
+const leaderboardRows = [
+    "#1 · 9.2 · Top 1% · 🇧🇷 · ✦ Minted",
+    "#2 · 9.0 · Top 2% · 🇰🇷 · ✦ Minted",
+    "#3 · 8.8 · Top 4% · 🇳🇬 · ✦ Minted",
+];
+
+const plans = [
+    {
+        name: "Essential",
+        label: "A first, honest look",
+        price: "Free",
+        description:
+            "Your entry point. See where you actually stand before deciding how much depth you want.",
+        features: [
+            "Overall harmony score (1.0–10.0)",
+            "Global percentile ranking",
+            "Symmetry snapshot",
+            "Top 3 visible strengths",
+            "1 free improvement observation",
+        ],
+        cta: "Start here — no wallet required",
+        footnote: "3 analyses per day · Photo deleted immediately",
+    },
+    {
+        name: "Premium",
+        label: "The full reading",
+        price: "~$19 · Paid in ETH",
+        description:
+            "The complete picture. Every dimension explained, every weakness identified, every observation made actionable. This is the report worth owning.",
+        features: [
+            "Full 7-dimension breakdown",
+            "Detailed strengths and weak points",
+            "20 personalised improvement observations",
+            "Skincare and grooming guidance",
+            "Style notes calibrated to your face shape",
+            "Downloadable report",
+            "Rescan eligibility after 7 days",
+        ],
+        cta: "Unlock Premium · ~0.008 ETH",
+        footnote: "Paid in ETH on Base · Dollar equivalent shown at checkout",
+        featured: true,
+    },
+    {
+        name: "Elite",
+        label: "For serious optimisation",
+        price: "~$49 · Paid in ETH",
+        description:
+            "Everything in Premium, plus deeper personalisation, priority processing, and three rescan credits included.",
+        features: [
+            "Everything in Premium",
+            "3 rescan credits included",
+            "Priority analysis processing",
+            "Extended style and grooming guide",
+            "Deeper facial structure analysis",
+            "Personalised improvement roadmap",
+        ],
+        cta: "Unlock Elite · ~0.021 ETH",
+    },
+];
+
+const resultMetrics = [
+    { label: "Symmetry", value: 97 },
+    { label: "Proportion", value: 82 },
+    { label: "Harmony", value: 91 },
+    { label: "Structure", value: 72 },
+    { label: "Skin", value: 85 },
+    { label: "Dimorphism", value: 78 },
+];
+
+const heroImages = [
+    {
+        src: "/Nigerian_man_with_golden_ratio_analysis_lines.png",
+        alt: "Nigerian man portrait with golden ratio analysis lines",
+    },
+    {
+        src: "/Brazilian_woman_with_symmetry_nodes.png",
+        alt: "Brazilian woman portrait with symmetry nodes",
+    },
+];
+
+function SectionHeader({
+    label,
+    title,
+    body,
+}: {
+    label: string;
+    title: string;
+    body?: string;
+}) {
+    return (
+        <div className="max-w-3xl">
+            <p className="eyebrow mb-5">{label}</p>
+            <h2 className="font-serif text-[clamp(2.3rem,4.8vw,4.8rem)] font-light leading-[0.95] tracking-[-0.05em] text-text">
+                {title}
+            </h2>
+            {body ? (
+                <p className="mt-5 max-w-2xl text-[1rem] leading-8 text-soft/80">
+                    {body}
+                </p>
+            ) : null}
+        </div>
+    );
+}
 
 export default function Home() {
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState<AnalysisPublic | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [pendingFile, setPendingFile] = useState<File | null>(null);
-    const { isSubscribed } = useSubscribe();
-
+    const [activeHeroImage, setActiveHeroImage] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const processFile = async (file: File) => {
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setActiveHeroImage((current) => (current + 1) % heroImages.length);
+        }, 5500);
+
+        return () => window.clearInterval(interval);
+    }, []);
+
+    const handleFile = async (file: File) => {
+        if (!file || !file.type.startsWith("image/")) return;
+
         setUploadedFile(file);
         setIsUploading(true);
         setIsModalOpen(true);
@@ -35,416 +220,697 @@ export default function Home() {
                 body: formData,
             });
 
-            if (!response.ok) throw new Error("Analysis failed");
+            if (!response.ok) {
+                throw new Error("Analysis failed");
+            }
+
             const data = await response.json();
             setResult(data);
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error(error);
         } finally {
             setIsUploading(false);
-            setPendingFile(null);
-        }
-    };
-
-    const handleFile = async (file: File) => {
-        if (!file || !file.type.startsWith("image/")) return;
-        
-        if (!isSubscribed) {
-            setPendingFile(file);
-            setIsPaymentModalOpen(true);
-            return;
-        }
-
-        await processFile(file);
-    };
-
-    const handlePaymentSuccess = () => {
-        setIsPaymentModalOpen(false);
-        if (pendingFile) {
-            processFile(pendingFile);
         }
     };
 
     const scrollToSection = (id: string) => {
-        const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: "smooth" });
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
     };
 
     return (
         <div className="min-h-screen bg-deep text-text">
-            {/* NAVIGATION */}
-            <nav className="fixed inset-x-0 top-0 z-50 bg-deep/90 backdrop-blur-md border-b border-gold/10">
-                <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-16 flex items-center justify-between">
-                    <div className="leading-none">
-                        <p className="font-serif text-xl text-gold tracking-[0.08em]">
-                            Soundarya
+            <Navbar />
+
+            <main className="relative overflow-hidden">
+                <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(201,169,110,0.08),transparent_22%),radial-gradient(circle_at_84%_14%,rgba(229,190,132,0.12),transparent_18%),radial-gradient(circle_at_72%_60%,rgba(188,137,76,0.08),transparent_24%)]" />
+                </div>
+
+                <section className="relative mx-auto grid min-h-screen max-w-7xl items-center gap-16 px-6 pb-20 pt-32 sm:px-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-20 lg:px-12 lg:pt-36">
+                    <div className="relative z-10 max-w-2xl">
+                        <p className="eyebrow mb-7">
+                            AI Analysis · Onchain Proof · Base Network
                         </p>
-                        <p className="text-[7px] tracking-[0.3em] text-muted uppercase mt-1 font-medium">
-                            BEAUTY INTELLIGENCE
+                        <h1 className="font-serif text-[clamp(3.2rem,7vw,6.9rem)] font-light leading-[0.9] tracking-[-0.06em] text-text">
+                            Your face has a score.
+                            <span className="mt-2 block">
+                                Most people never find out what it is.
+                            </span>
+                        </h1>
+                        <p className="mt-6 font-serif text-[clamp(1.65rem,3vw,2.4rem)] italic leading-tight text-gold-bright">
+                            Now you can own yours — permanently.
                         </p>
-                    </div>
+                        <p className="mt-8 max-w-2xl text-[1.03rem] leading-8 text-soft/82">
+                            Soundarya is the only beauty analysis platform that
+                            turns a single portrait into a structured, scientific
+                            reading — and lets you mint that score as a permanent
+                            credential on the Base network. No flattery. No
+                            filters. Just the truth, verified and yours forever.
+                        </p>
 
-                    <div className="hidden md:flex items-center gap-12">
-                        <button
-                            onClick={() => scrollToSection("process")}
-                            className="text-[9px] uppercase tracking-[0.25em] text-muted hover:text-gold transition-colors"
-                        >
-                            Process
-                        </button>
-                        <button
-                            onClick={() => scrollToSection("pricing")}
-                            className="text-[9px] uppercase tracking-[0.25em] text-muted hover:text-gold transition-colors"
-                        >
-                            Pricing
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={() => scrollToSection("upload")}
-                        className="hidden sm:block btn-secondary"
-                    >
-                        Begin
-                    </button>
-                </div>
-            </nav>
-
-            {/* HERO SECTION */}
-            <section className="min-h-screen flex items-center justify-center pt-24 px-6 sm:px-8 lg:px-12 bg-deep relative overflow-hidden">
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-96 h-96 bg-gold/5 rounded-full blur-3xl opacity-40"></div>
-                </div>
-
-                <div className="max-w-5xl w-full text-center relative z-10 reveal">
-                    <h1 className="font-serif text-[clamp(2.8rem,9vw,6rem)] leading-[1.08] font-light text-text mb-6">
-                        Discover Your{" "}
-                        <span className="text-gold font-normal italic">
-                            True Beauty
-                        </span>{" "}
-                        Score
-                    </h1>
-
-                    <p className="font-serif text-gold text-xl sm:text-2xl tracking-[0.16em] mb-12 font-light">
-                        सौन्दर्य प्रमाणित
-                    </p>
-
-                    <p className="text-soft text-sm sm:text-base leading-relaxed max-w-2xl mx-auto font-light tracking-wider mb-16 opacity-75">
-                        Ancient wisdom meets modern intelligence. Upload one
-                        clear photo and receive a premium facial harmony
-                        analysis based on symmetry, golden ratio, and structural
-                        balance.
-                    </p>
-
-                    <button
-                        onClick={() => scrollToSection("upload")}
-                        className="group inline-flex items-center gap-5 btn-gold"
-                    >
-                        UPLOAD YOUR PHOTO{" "}
-                        <span className="text-lg transition-transform group-hover:translate-x-1">
-                            ⟶
-                        </span>
-                    </button>
-                </div>
-            </section>
-
-            {/* PROCESS SECTION */}
-            <section
-                id="process"
-                className="py-32 sm:py-40 px-6 sm:px-8 lg:px-12 bg-deep"
-            >
-                <div className="max-w-6xl mx-auto">
-                    <div className="flex items-center gap-8 mb-24 reveal">
-                        <div className="h-px flex-1 bg-gold/20"></div>
-                        <h2 className="font-serif text-3xl sm:text-4xl font-light text-text whitespace-nowrap">
-                            The Process
-                        </h2>
-                        <div className="h-px flex-1 bg-gold/20"></div>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8 lg:gap-10 reveal">
-                        {[
-                            {
-                                title: "Upload Photo",
-                                desc: "Provide a clear, front-facing image for accurate facial landmark extraction and harmony analysis.",
-                            },
-                            {
-                                title: "Instant Analysis",
-                                desc: "Our AI evaluates symmetry, golden ratio alignment, and dimensional proportion within seconds.",
-                            },
-                            {
-                                title: "Get Your Report",
-                                desc: "Receive your beauty score, percentile rank, and practical insights tailored to your features.",
-                            },
-                        ].map((step, idx) => (
-                            <div
-                                key={idx}
-                                className="group p-10 sm:p-12 border border-gold/15 bg-surface/40 hover:bg-surface/60 rounded-sm transition-all duration-500"
+                        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                            <button
+                                onClick={() => scrollToSection("upload")}
+                                className="btn-gold"
                             >
-                                <div className="w-12 h-12 mb-8 rounded-full border border-gold/30 flex items-center justify-center text-gold text-lg group-hover:border-gold/60 group-hover:bg-gold/5 transition-all">
-                                    {String(idx + 1).padStart(2, "0")}
+                                → Upload Your Portrait
+                            </button>
+                            <button
+                                onClick={() => scrollToSection("plans")}
+                                className="btn-secondary"
+                            >
+                                → See Access Plans
+                            </button>
+                        </div>
+
+                        <div className="mt-10 border-t border-gold/12 pt-6 text-[0.72rem] uppercase tracking-[0.2em] text-soft/66">
+                            ✦ Results in under 60 seconds · ✦ Photo deleted
+                            immediately after · ✦ Score minted on Base · ✦ No
+                            account required to start
+                        </div>
+                    </div>
+
+                    <div className="relative z-10">
+                        <div className="absolute -inset-8 bg-[radial-gradient(circle,rgba(201,169,110,0.14),transparent_62%)] blur-3xl" />
+                        <div className="relative overflow-hidden border border-gold/18 bg-[linear-gradient(180deg,rgba(24,18,13,0.92),rgba(13,10,7,0.84))] shadow-premium">
+                            <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
+                                <div className="relative min-h-[520px] border-b border-gold/10 md:border-b-0 md:border-r md:border-gold/10">
+                                    {heroImages.map((image, index) => (
+                                        <Image
+                                            key={image.src}
+                                            src={image.src}
+                                            alt={image.alt}
+                                            fill
+                                            sizes="(min-width: 768px) 50vw, 100vw"
+                                            priority={index === 0}
+                                            className={`object-cover object-center transition-opacity duration-[1400ms] ${
+                                                activeHeroImage === index
+                                                    ? "opacity-100"
+                                                    : "opacity-0"
+                                            }`}
+                                        />
+                                    ))}
+                                    <div className="absolute inset-x-5 bottom-5 flex gap-2">
+                                        {heroImages.map((image, index) => (
+                                            <button
+                                                key={image.src}
+                                                type="button"
+                                                onClick={() => setActiveHeroImage(index)}
+                                                className={`h-1.5 flex-1 transition-colors ${
+                                                    activeHeroImage === index
+                                                        ? "bg-gold-bright"
+                                                        : "bg-white/20"
+                                                }`}
+                                                aria-label={`Show hero portrait ${index + 1}`}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <h3 className="font-serif text-2xl text-text mb-4 font-light">
-                                    {step.title}
-                                </h3>
-                                <p className="text-[12px] leading-relaxed text-soft font-light opacity-70">
-                                    {step.desc}
+                                <div className="flex flex-col justify-between p-8">
+                                    <div>
+                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/70">
+                                            Sample result
+                                        </p>
+                                        <div className="mt-4 font-serif text-[5rem] font-light leading-none text-gold-bright">
+                                            8.3
+                                        </div>
+                                        <p className="mt-3 text-[0.7rem] uppercase tracking-[0.3em] text-soft/56">
+                                            Top 10 percentile globally
+                                        </p>
+                                        <div className="mt-5 inline-flex border border-gold/20 px-3 py-2 text-[0.66rem] uppercase tracking-[0.2em] text-gold-light">
+                                            ✦ Minted on Base · Token #1,204
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-10 space-y-5">
+                                        {[
+                                            { label: "Symmetry", value: 97 },
+                                            { label: "Proportion", value: 82 },
+                                            { label: "Harmony", value: 91 },
+                                            { label: "Structure", value: 72 },
+                                        ].map((metric) => (
+                                            <div key={metric.label} className="space-y-2">
+                                                <div className="flex items-end justify-between text-[0.7rem] uppercase tracking-[0.24em] text-soft/60">
+                                                    <span>{metric.label}</span>
+                                                    <span className="font-serif text-[1rem] tracking-normal text-gold-light">
+                                                        {metric.value}
+                                                    </span>
+                                                </div>
+                                                <div className="h-px bg-white/8">
+                                                    <div
+                                                        className="h-px bg-gold-bright"
+                                                        style={{ width: `${metric.value}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <p className="mt-10 border-t border-gold/10 pt-6 font-serif text-[1rem] italic leading-7 text-soft/72">
+                                        &quot;The first time I&apos;ve seen something tell
+                                        me the honest truth about my face — and I
+                                        can actually prove it&apos;s mine.&quot;
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="border-y border-gold/10 bg-[linear-gradient(180deg,rgba(22,17,13,0.86),rgba(13,10,7,0.76))]">
+                    <div className="mx-auto grid max-w-7xl gap-6 px-6 py-10 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-12">
+                        {stats.map((item) => (
+                            <div key={item.label} className="border-l border-gold/14 pl-5">
+                                <p className="font-serif text-[2.9rem] font-light leading-none text-gold-bright">
+                                    {item.value}
+                                </p>
+                                <p className="mt-3 max-w-[15rem] text-[0.76rem] uppercase tracking-[0.18em] text-soft/62">
+                                    {item.label}
                                 </p>
                             </div>
                         ))}
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* PRICING SECTION */}
-            <section
-                id="pricing"
-                className="py-32 sm:py-40 px-6 sm:px-8 lg:px-12 bg-surface/30"
-            >
-                <div className="max-w-6xl mx-auto">
-                    <div className="flex items-center gap-8 mb-24 reveal">
-                        <div className="h-px flex-1 bg-gold/20"></div>
-                        <h2 className="font-serif text-3xl sm:text-4xl font-light text-text whitespace-nowrap">
-                            Choose Your Plan
-                        </h2>
-                        <div className="h-px flex-1 bg-gold/20"></div>
+                <section className="mx-auto grid max-w-7xl gap-14 px-6 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20 lg:px-12 lg:py-32">
+                    <SectionHeader
+                        label="Why Soundarya exists"
+                        title="Everyone has an opinion about how you look. Nobody has ever given you the data."
+                    />
+                    <div className="space-y-7 text-[1rem] leading-8 text-soft/82">
+                        <p>
+                            Your friends flatter you. Dating apps give you swipe
+                            counts but no explanation. Mirrors show you what you
+                            already know. What nobody has ever handed you is the
+                            objective, structured reading — the kind a trained
+                            aesthetician would give, backed by measurement rather
+                            than preference.
+                        </p>
+                        <p>
+                            Soundarya does that. And then it goes one step
+                            further: it lets you own the result.
+                        </p>
+                        <div className="border border-gold/14 bg-surface/36 p-7 font-serif text-[1.15rem] italic leading-8 text-gold-light">
+                            When your score is minted on Base, it cannot be
+                            changed, disputed, or taken away. It is a verifiable,
+                            permanent record — a credential that travels with your
+                            wallet everywhere.
+                        </div>
                     </div>
+                </section>
 
-                    <div className="grid md:grid-cols-3 gap-6 lg:gap-8 reveal">
-                        {[
-                            {
-                                name: "Free",
-                                price: "0",
-                                features: [
-                                    "Overall score",
-                                    "Symmetry rating",
-                                    "Percentile rank",
-                                ],
-                                primary: false,
-                            },
-                            {
-                                name: "Unlocked",
-                                price: "19",
-                                features: [
-                                    "All Free features",
-                                    "Dimensional breakdown",
-                                    "3D personalized tips",
-                                    "PDF report",
-                                ],
-                                primary: true,
-                                badge: "POPULAR",
-                            },
-                            {
-                                name: "Elite",
-                                price: "49",
-                                features: [
-                                    "All Premium features",
-                                    "Skincare guidance",
-                                    "Grooming insights",
-                                    "Priority AI analysis",
-                                ],
-                                primary: false,
-                                badge: "BEST VALUE",
-                            },
-                        ].map((plan) => (
-                            <div
-                                key={plan.name}
-                                className={`flex flex-col p-10 sm:p-12 border rounded-sm transition-all duration-300 relative ${
-                                    plan.primary
-                                        ? "bg-gold/10 border-gold/40 scale-105 md:scale-100 shadow-lg"
-                                        : "border-gold/15 bg-card/50 hover:bg-card/80"
+                <section
+                    id="process"
+                    className="border-y border-gold/10 bg-[linear-gradient(180deg,rgba(19,15,11,0.9),rgba(15,11,8,0.95))]"
+                >
+                    <div className="mx-auto max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-32">
+                        <SectionHeader
+                            label="The process"
+                            title="Three steps from portrait to permanent record."
+                        />
+                        <div className="mt-14 grid gap-6">
+                            {processSteps.map((step) => (
+                                <article
+                                    key={step.number}
+                                    className="grid gap-6 border border-gold/12 bg-surface/40 p-8 sm:grid-cols-[88px_1fr]"
+                                >
+                                    <div className="flex h-16 w-16 items-center justify-center border border-gold/18 font-serif text-[2rem] font-light text-gold-bright">
+                                        {step.number}
+                                    </div>
+                                    <div>
+                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/68">
+                                            {step.label}
+                                        </p>
+                                        <h3 className="mt-3 font-serif text-[2rem] font-light tracking-[-0.03em] text-text">
+                                            {step.title}
+                                        </h3>
+                                        <p className="mt-4 max-w-4xl text-[0.98rem] leading-8 text-soft/80">
+                                            {step.body}
+                                        </p>
+                                        {step.number === "02" ? (
+                                            <div className="mt-8 overflow-hidden border border-gold/10 bg-deep/50">
+                                                <div className="relative min-h-[320px]">
+                                                    <Image
+                                                        src="/South_Asian_woman_with_landmark_mesh_and_partial_score.png"
+                                                        alt="South Asian woman with landmark mesh and partial score"
+                                                        fill
+                                                        sizes="(min-width: 1024px) 70vw, 100vw"
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mx-auto max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-32">
+                    <SectionHeader
+                        label="The science"
+                        title="Seven dimensions. One honest number."
+                        body="Soundarya doesn't guess. It measures."
+                    />
+                    <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        {dimensions.map((dimension, index) => (
+                            <article
+                                key={dimension.title}
+                                className={`border border-gold/12 bg-surface/38 p-7 ${
+                                    index === 6 ? "xl:col-span-3" : ""
                                 }`}
                             >
-                                {plan.badge && (
-                                    <div className="absolute top-4 right-4 bg-gold/20 border border-gold/40 text-gold text-[7px] px-2.5 py-1.5 uppercase tracking-[0.2em] font-medium rounded-sm">
-                                        {plan.badge}
-                                    </div>
-                                )}
-
-                                <h3 className="font-serif text-2xl text-text mb-10 font-light">
-                                    {plan.name}
+                                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/68">
+                                    Dimension {index + 1}
+                                </p>
+                                <h3 className="mt-3 font-serif text-[1.9rem] font-light text-text">
+                                    {dimension.title}
                                 </h3>
+                                <p className="mt-4 text-[0.96rem] leading-8 text-soft/80">
+                                    {dimension.body}
+                                </p>
+                            </article>
+                        ))}
+                    </div>
+                    <p className="mt-10 max-w-4xl text-[0.98rem] leading-8 text-soft/78">
+                        All seven feed a single overall score from 1.0 to 10.0,
+                        placed against a global percentile. Most people land
+                        between 5.0 and 7.0. A score above 8.0 is genuinely rare.
+                    </p>
+                </section>
 
-                                <div className="mb-12 border-b border-gold/15 pb-8">
-                                    <div className="font-serif text-5xl text-gold leading-none mb-3">
-                                        ${plan.price}
-                                    </div>
-                                    <p className="text-[9px] tracking-[0.2em] text-muted uppercase">
-                                        ONE TIME
+                <section className="border-y border-gold/10 bg-[linear-gradient(180deg,rgba(23,17,13,0.9),rgba(13,10,7,0.88))]">
+                    <div className="mx-auto grid max-w-7xl gap-16 px-6 py-24 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-12 lg:py-32">
+                        <div>
+                            <SectionHeader
+                                label="Onchain · Base network"
+                                title="Your score should belong to you. Not to us. Not to a server. To your wallet."
+                            />
+                            <div className="mt-8 space-y-6 text-[1rem] leading-8 text-soft/82">
+                                <p>
+                                    Every analysis you run on Soundarya produces a
+                                    result stored in our database. But a database
+                                    can be deleted, altered, or taken offline. An
+                                    onchain record cannot.
+                                </p>
+                                <p>
+                                    When you mint your score on Base, every
+                                    dimension — your symmetry reading, your bone
+                                    structure score, your overall result, your
+                                    percentile, the exact date — is written
+                                    permanently to the chain. It lives in your
+                                    wallet. It appears on OpenSea. It displays on
+                                    your Farcaster profile. No one can alter it,
+                                    dispute it, or take it away.
+                                </p>
+                                <p>
+                                    This is what makes Soundarya different from
+                                    every other analysis tool: the result is
+                                    genuinely yours.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-5">
+                            {onchainBenefits.map((benefit) => (
+                                <article
+                                    key={benefit.title}
+                                    className="border border-gold/12 bg-surface/38 p-7"
+                                >
+                                    <h3 className="font-serif text-[1.7rem] font-light text-text">
+                                        {benefit.title}
+                                    </h3>
+                                    <p className="mt-3 text-[0.96rem] leading-8 text-soft/78">
+                                        {benefit.body}
                                     </p>
+                                </article>
+                            ))}
+                            <div className="border border-gold/18 bg-gold/6 px-6 py-5 text-[0.76rem] uppercase tracking-[0.18em] text-gold-light">
+                                Mint price: 0.001 ETH · Base network · Gas under
+                                $0.01 · Score stored permanently onchain
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="mx-auto grid max-w-7xl gap-16 px-6 py-24 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-12 lg:py-32">
+                    <div>
+                        <SectionHeader
+                            label="Global rankings · Weekly epoch"
+                            title="How do you rank against everyone else who has been honest about their face?"
+                            body="The Soundarya leaderboard resets every seven days. To enter, you must have minted your score as an NFT — that is the proof that your result is real. Each epoch, the top ten scores hold their position. At the end of the week, rankings are recorded permanently and a new competition begins."
+                        />
+                        <button className="btn-secondary mt-10">
+                            → View full leaderboard
+                        </button>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="overflow-hidden border border-gold/12 bg-surface/40">
+                            <div className="relative min-h-[240px]">
+                                <Image
+                                    src="/Split_portrait_Black_man_and_European_woman.png"
+                                    alt="Split portrait of a Black man and European woman with scores"
+                                    fill
+                                    sizes="(min-width: 1024px) 40vw, 100vw"
+                                    className="object-cover"
+                                />
+                            </div>
+                        </div>
+                        <div className="border border-gold/12 bg-surface/40 p-8">
+                        <div className="grid grid-cols-[1.1fr_0.9fr_1fr_1fr_1fr] gap-3 border-b border-gold/10 pb-4 text-[0.68rem] uppercase tracking-[0.22em] text-soft/58">
+                            <span>Rank</span>
+                            <span>Score</span>
+                            <span>Percentile</span>
+                            <span>Country</span>
+                            <span>Minted</span>
+                        </div>
+                        <div className="mt-4 space-y-3">
+                            {leaderboardRows.map((row) => (
+                                <div
+                                    key={row}
+                                    className="border border-gold/8 bg-deep/50 px-4 py-4 font-serif text-[1.05rem] text-gold-light"
+                                >
+                                    {row}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    </div>
+                </section>
+
+                <section className="border-y border-gold/10 bg-[linear-gradient(180deg,rgba(17,13,10,0.94),rgba(13,10,7,1))]">
+                    <div className="mx-auto grid max-w-7xl gap-16 px-6 py-24 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-12 lg:py-32">
+                        <div>
+                            <SectionHeader
+                                label="Progress tracking"
+                                title="Beauty is not static. Your score shouldn't be either."
+                                body="Seven days after your last paid analysis, Soundarya unlocks a rescan. Same seven dimensions, same scientific framework, new portrait. If your score improves — better sleep, a new skincare routine, changed lighting, actual physical change — it shows up in the reading."
+                            />
+                            <p className="mt-6 max-w-xl text-[1rem] leading-8 text-soft/80">
+                                Mint your new score. Submit it to the leaderboard.
+                                Watch your position move.
+                            </p>
+                            <p className="mt-8 font-serif text-[1rem] italic leading-7 text-soft/72">
+                                &quot;The rescan after six weeks of consistent sleep
+                                and skincare hit different. +0.6 points. Minted
+                                immediately.&quot;
+                            </p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="overflow-hidden border border-gold/12 bg-surface/38">
+                                <div className="relative min-h-[320px]">
+                                    <Image
+                                        src="/Arab_man_diptych_Week_1_vs_Week_6_with_delta_score.png"
+                                        alt="Arab man diptych showing week 1 versus week 6 with delta score"
+                                        fill
+                                        sizes="(min-width: 1024px) 40vw, 100vw"
+                                        className="object-cover"
+                                    />
+                                </div>
+                            </div>
+                            {[
+                                "Day 0 · First analysis + mint",
+                                "Day 7 · Rescan available",
+                                "Day 7+ · New score · New NFT · Updated rank",
+                            ].map((item) => (
+                                <div
+                                    key={item}
+                                    className="border border-gold/12 bg-surface/38 px-6 py-5 font-serif text-[1.3rem] font-light text-gold-light"
+                                >
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="plans" className="mx-auto max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-32">
+                    <SectionHeader
+                        label="Access"
+                        title="Choose the depth of your reading."
+                        body="All tiers use the same AI, the same seven dimensions, and the same scoring model. What changes is how deep the report goes — and what you can do with the result."
+                    />
+
+                    <div className="mt-14 grid gap-6 xl:grid-cols-3">
+                        {plans.map((plan) => (
+                            <article
+                                key={plan.name}
+                                className={`flex flex-col border p-8 ${
+                                    plan.featured
+                                        ? "border-gold/38 bg-gold/6 shadow-premium"
+                                        : "border-gold/12 bg-surface/34"
+                                }`}
+                            >
+                                <div className="border-b border-gold/10 pb-7">
+                                    <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/68">
+                                        {plan.label}
+                                    </p>
+                                    <h3 className="mt-4 font-serif text-[2.5rem] font-light text-text">
+                                        {plan.name}
+                                    </h3>
+                                    <p className="mt-5 font-serif text-[2.9rem] font-light leading-none text-gold-bright">
+                                        {plan.price}
+                                    </p>
+                                    {plan.featured ? (
+                                        <div className="mt-4 inline-flex border border-gold/20 px-3 py-2 text-[0.66rem] uppercase tracking-[0.2em] text-gold-light">
+                                            Recommended
+                                        </div>
+                                    ) : null}
                                 </div>
 
-                                <ul className="space-y-3.5 mb-12 flex-1">
-                                    {plan.features.map((f, i) => (
+                                <p className="mt-7 text-[0.96rem] leading-8 text-soft/80">
+                                    {plan.description}
+                                </p>
+
+                                <ul className="mt-8 flex-1 space-y-4">
+                                    {plan.features.map((feature) => (
                                         <li
-                                            key={i}
-                                            className="flex items-start gap-3 text-[11px] text-soft font-light"
+                                            key={feature}
+                                            className="flex items-start gap-3 text-[0.95rem] leading-7 text-soft/78"
                                         >
-                                            <span className="text-gold text-xs mt-0.5">
-                                                ◆
-                                            </span>
-                                            <span>{f}</span>
+                                            <span className="mt-1 text-gold-bright">✦</span>
+                                            <span>{feature}</span>
                                         </li>
                                     ))}
                                 </ul>
 
                                 <button
                                     onClick={() => scrollToSection("upload")}
-                                    className={
-                                        plan.primary
-                                            ? "btn-gold w-full"
-                                            : "btn-secondary w-full"
-                                    }
+                                    className={plan.featured ? "btn-gold mt-10" : "btn-secondary mt-10"}
                                 >
-                                    Get Started
+                                    {plan.cta}
                                 </button>
-                            </div>
+
+                                {plan.footnote ? (
+                                    <p className="mt-4 text-[0.72rem] uppercase tracking-[0.16em] text-soft/56">
+                                        {plan.footnote}
+                                    </p>
+                                ) : null}
+                            </article>
                         ))}
                     </div>
-                </div>
-            </section>
 
-            {/* RESULTS PREVIEW */}
-            <section className="py-32 sm:py-40 px-6 sm:px-8 lg:px-12 bg-deep">
-                <div className="max-w-6xl mx-auto">
-                    <div className="flex items-center gap-8 mb-24 reveal">
-                        <div className="h-px flex-1 bg-gold/20"></div>
-                        <h2 className="font-serif text-3xl sm:text-4xl font-light text-text whitespace-nowrap">
-                            Your Results
-                        </h2>
-                        <div className="h-px flex-1 bg-gold/20"></div>
+                    <p className="mt-10 max-w-5xl text-[0.96rem] leading-8 text-soft/78">
+                        All payments are processed in ETH on the Base network.
+                        Dollar equivalents are calculated at current ETH price and
+                        displayed at checkout. No subscription. No recurring
+                        charge. Pay once, own your report.
+                    </p>
+                    <div className="mt-6 border border-gold/12 bg-surface/36 p-6 text-[0.92rem] leading-8 text-soft/78">
+                        Want to own your result onchain?
+                        <br />
+                        Add an NFT mint for 0.001 ETH — roughly $2–3 at current
+                        ETH price. Your score, all seven dimensions, and your
+                        percentile are written permanently to Base. Required for
+                        leaderboard entry.
                     </div>
+                </section>
 
-                    <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center reveal">
-                        <div>
-                            <div className="font-serif text-7xl lg:text-8xl text-gold font-light leading-none mb-6">
-                                8.3
+                <section className="border-y border-gold/10 bg-[linear-gradient(180deg,rgba(23,17,13,0.92),rgba(12,10,8,0.96))]">
+                    <div className="mx-auto grid max-w-7xl items-center gap-16 px-6 py-24 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12 lg:py-32">
+                        <div className="relative overflow-hidden border border-gold/12 bg-surface/40 p-6">
+                            <div className="relative min-h-[360px] overflow-hidden border border-gold/10">
+                                <Image
+                                    src="/Korean_man_with_measurement_grid_and_score_readouts.png"
+                                    alt="Korean man with measurement grid and score readouts"
+                                    fill
+                                    sizes="(min-width: 1024px) 45vw, 100vw"
+                                    className="object-cover"
+                                />
                             </div>
-                            <p className="text-[10px] tracking-[0.25em] text-muted uppercase mb-2">
-                                OUT OF TOP
-                            </p>
-                            <p className="text-[10px] tracking-[0.25em] text-muted uppercase">
-                                10TH PERCENTILE
-                            </p>
                         </div>
 
-                        <div className="space-y-8">
-                            {[
-                                { label: "Symmetry", val: 97 },
-                                { label: "Golden Ratio", val: 82 },
-                                { label: "Proportion", val: 72 },
-                                { label: "Harmony", val: 91 },
-                            ].map((item) => (
-                                <div key={item.label} className="group">
-                                    <div className="flex justify-between items-end mb-3">
-                                        <span className="text-[10px] tracking-[0.2em] text-muted uppercase opacity-60 group-hover:opacity-100 transition-opacity">
-                                            {item.label}
-                                        </span>
-                                        <span className="text-[12px] text-gold font-serif opacity-60 group-hover:opacity-100 transition-opacity">
-                                            {item.val}%
-                                        </span>
-                                    </div>
-                                    <div className="h-px bg-gold/20 relative overflow-hidden">
-                                        <div
-                                            className="h-px bg-gold transition-all duration-1000"
-                                            style={{ width: `${item.val}%` }}
-                                        ></div>
-                                    </div>
+                        <div>
+                            <SectionHeader
+                                label="What the report looks like"
+                                title="One focal score. Every dimension in full."
+                                body="The Soundarya report is structured like a premium consultation — a single headline number, a percentile context, and then each dimension broken down with the clarity that makes the observation actually useful."
+                            />
+
+                            <div className="mt-10 border border-gold/12 bg-surface/38 p-8">
+                                <div className="font-serif text-[5.5rem] font-light leading-none text-gold-bright">
+                                    8.3
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <p className="mt-3 text-[0.68rem] uppercase tracking-[0.32em] text-soft/58">
+                                    Top 10 percentile globally
+                                </p>
+                                <p className="mt-3 text-[0.84rem] uppercase tracking-[0.18em] text-gold/70">
+                                    Category: Very Attractive
+                                </p>
 
-                    <div className="mt-20 pt-12 border-t border-gold/15 text-center">
-                        <p className="text-xs sm:text-sm text-soft italic font-light tracking-wide opacity-60">
-                            "Strong structural harmony with excellent ratio
-                            adherence and balanced upper-to-lower facial
-                            thirds." ◆
-                        </p>
-                    </div>
-                </div>
-            </section>
+                                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                                    {resultMetrics.map((metric) => (
+                                        <div key={metric.label} className="space-y-2">
+                                            <div className="flex items-end justify-between">
+                                                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-soft/60">
+                                                    {metric.label}
+                                                </p>
+                                                <p className="font-serif text-[1.15rem] text-gold-light">
+                                                    {metric.value}
+                                                </p>
+                                            </div>
+                                            <div className="h-px bg-white/10">
+                                                <div
+                                                    className="h-px bg-gold-bright"
+                                                    style={{ width: `${metric.value}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
 
-            {/* UPLOAD SECTION */}
-            <section
-                id="upload"
-                className="py-32 sm:py-40 px-6 sm:px-8 lg:px-12"
-            >
-                <div className="max-w-3xl mx-auto">
-                    <div className="text-center mb-16 reveal">
-                        <p className="text-gold text-[8px] uppercase tracking-[0.35em] mb-4 font-medium">
-                            READY TO DISCOVER?
-                        </p>
-                        <h2 className="font-serif text-[clamp(2rem,6vw,3.2rem)] leading-tight font-light mb-4">
-                            Get Your Soundarya Score
-                        </h2>
-                        <p className="text-soft text-sm max-w-lg mx-auto">
-                            Upload a clear, front-facing photo and get your
-                            comprehensive beauty analysis in seconds.
-                        </p>
-                    </div>
+                                <div className="mt-8 border border-dashed border-gold/18 bg-deep/50 p-6">
+                                    <p className="text-[0.92rem] leading-8 text-soft/44 blur-[1.8px]">
+                                        &quot;Strong bilateral symmetry positions you
+                                        well above average on the dimension most
+                                        correlated with attraction across cultures.
+                                        The primary area for improvement is
+                                        structural — the jawline lacks the
+                                        definition that would elevate the bone
+                                        structure score significantly. Three
+                                        observations follow on what can
+                                        realistically change this...&quot;
+                                    </p>
+                                </div>
 
-                    <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="reveal relative border-2 border-dashed border-gold/40 bg-surface/50 hover:bg-surface/70 hover:border-gold/70 p-20 sm:p-32 rounded-sm transition-all duration-300 group cursor-pointer"
-                    >
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            accept="image/*"
-                            onChange={(e) =>
-                                e.target.files?.[0] &&
-                                handleFile(e.target.files[0])
-                            }
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                        />
-                        <div className="relative z-10 pointer-events-none text-center">
-                            <div className="text-5xl sm:text-6xl text-gold mb-6 group-hover:scale-110 transition-transform">
-                                ✦
+                                <div className="mt-8 border-t border-gold/10 pt-6">
+                                    <p className="text-[0.92rem] leading-8 text-soft/78">
+                                        The full reading requires Premium. Unlock
+                                        20 observations, all dimensions explained,
+                                        and your improvement roadmap.
+                                    </p>
+                                    <button className="btn-gold mt-6">
+                                        → Unlock Premium · ~0.008 ETH
+                                    </button>
+                                </div>
                             </div>
-                            <h3 className="font-serif text-[clamp(1.6rem,4vw,2.4rem)] text-text mb-3 font-light">
-                                Drop your photo here
-                            </h3>
-                            <p className="text-[9px] uppercase tracking-[0.15em] text-muted">
-                                or click to upload · max 10mb
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    id="upload"
+                    className="mx-auto grid max-w-7xl gap-16 px-6 py-24 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:px-12 lg:py-32"
+                >
+                    <div>
+                        <SectionHeader
+                            label="Ready for your own reading?"
+                            title="One portrait. The honest answer."
+                            body="Upload a clean, front-facing portrait. No filters, no sunglasses, no heavy shadows. The analysis takes under a minute. Your photo is deleted the moment the reading is complete — it is never stored, shared, or used for anything beyond your result."
+                        />
+                        <div className="mt-10 space-y-4 text-[0.78rem] uppercase tracking-[0.18em] text-soft/68">
+                            <p>→ Face the camera directly</p>
+                            <p>→ Use neutral, natural light</p>
+                            <p>→ No filters or heavy editing</p>
+                            <p>→ Avoid sunglasses or hair covering the face</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="group relative overflow-hidden border border-dashed border-gold/28 bg-[linear-gradient(180deg,rgba(28,21,16,0.92),rgba(18,13,10,0.92))] px-8 py-16 transition-all duration-300 hover:border-gold/50 hover:bg-[linear-gradient(180deg,rgba(34,26,20,0.96),rgba(19,14,10,0.96))]"
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) {
+                                        handleFile(file);
+                                    }
+                                }}
+                                className="absolute inset-0 cursor-pointer opacity-0"
+                            />
+
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(229,190,132,0.12),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+                            <div className="relative z-10 text-center">
+                                <p className="eyebrow mb-5">Drop your portrait here</p>
+                                <h3 className="font-serif text-[clamp(2.2rem,4vw,3.4rem)] font-light leading-none text-text">
+                                    Drop your portrait here
+                                </h3>
+                                <p className="mt-4 text-[0.82rem] uppercase tracking-[0.18em] text-soft/62">
+                                    or click to upload · JPG · PNG · WEBP · Max
+                                    10MB
+                                </p>
+                            </div>
+                        </div>
+
+                        <p className="text-[0.84rem] leading-7 text-soft/72">
+                            Your photo is deleted immediately after analysis. It
+                            is never stored on our servers.
+                        </p>
+
+                        <div className="border border-gold/12 bg-surface/34 p-6">
+                            <p className="font-serif text-[1.4rem] font-light text-gold-light">
+                                Your score is ready. Want to own it permanently?
+                            </p>
+                            <p className="mt-3 text-[0.92rem] leading-8 text-soft/78">
+                                Mint to Base for 0.001 ETH → permanently yours,
+                                forever provable.
                             </p>
                         </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer className="border-t border-gold/10 bg-card/80">
+                <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 sm:px-8 lg:grid-cols-3 lg:px-12">
+                    <div>
+                        <p className="font-serif text-[2rem] font-light text-gold-bright">
+                            Soundarya
+                        </p>
+                        <p className="mt-1 font-serif text-[1rem] text-soft/78">
+                            सौन्दर्य
+                        </p>
+                        <p className="mt-4 max-w-xs text-sm leading-7 text-soft/70">
+                            Beauty intelligence for honest self-review. Built on
+                            Base. Powered by Soundarya Oracle.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 text-[0.72rem] uppercase tracking-[0.2em] text-soft/62">
+                        <p>How It Works · Rankings · Access Plans</p>
+                        <p>Privacy · Terms</p>
+                    </div>
+
+                    <div className="space-y-3 text-[0.72rem] uppercase tracking-[0.2em] text-soft/62 lg:text-right">
+                        <p>✦ Deployed on Base</p>
+                        <p>✦ Scores stored onchain</p>
+                        <p>✦ Open for anyone to verify</p>
                     </div>
                 </div>
-            </section>
 
-            {/* FOOTER */}
-            <footer className="border-t border-gold/15 py-16 sm:py-20 bg-card/50">
-                <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-                    <div className="grid md:grid-cols-3 gap-12 mb-12 text-center md:text-left">
-                        <div>
-                            <p className="font-serif text-xl text-gold mb-2">
-                                Soundarya
-                            </p>
-                            <p className="text-[8px] text-muted uppercase tracking-[0.2em]">
-                                सौन्दर्य · Beauty Intelligence
-                            </p>
-                        </div>
-                        <div className="text-[13px] text-soft leading-relaxed">
-                            <p>
-                                Ancient wisdom meets modern science. AI-powered
-                                facial analysis for harmony, symmetry, and
-                                attractiveness.
-                            </p>
-                        </div>
-                        <div className="flex justify-center md:justify-end gap-6 text-[10px] text-muted uppercase tracking-[0.12em]">
-                            <button className="hover:text-gold transition-colors">
-                                Privacy
-                            </button>
-                            <button className="hover:text-gold transition-colors">
-                                Terms
-                            </button>
-                            <button className="hover:text-gold transition-colors">
-                                Contact
-                            </button>
-                        </div>
-                    </div>
-                    <div className="border-t border-gold/10 pt-8 text-center text-[9px] text-muted uppercase tracking-[0.15em]">
-                        © 2025 Soundarya. All rights reserved.
-                    </div>
+                <div className="border-t border-gold/10 px-6 py-5 text-center text-[0.7rem] uppercase tracking-[0.18em] text-soft/52 sm:px-8 lg:px-12">
+                    © 2025 Soundarya · सौन्दर्य · All analyses are private. All
+                    minted scores are permanent.
                 </div>
             </footer>
 
@@ -458,15 +924,6 @@ export default function Home() {
                 }}
                 imageFile={uploadedFile}
                 analysisResult={isUploading ? null : result}
-            />
-
-            <PayToScanModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => {
-                    setIsPaymentModalOpen(false);
-                    setPendingFile(null);
-                }}
-                onSuccess={handlePaymentSuccess}
             />
         </div>
     );

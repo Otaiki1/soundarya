@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useNFTMint } from "@/hooks/useNFTMint";
+import { useMintScore } from "@/hooks/useMintScore";
 import type { AnalysisPublic } from "@/types/analysis";
 
 type MintState = "CONNECT" | "CONFIRM" | "MINTING" | "SUCCESS";
@@ -22,9 +22,7 @@ export function MintScoreModal({
     const { address, isConnected } = useAccount();
     const { data: balance } = useBalance({ address, chainId: 8453 });
     const [state, setState] = useState<MintState>("CONNECT");
-    const { mint, isLoading, isSuccess, error, txHash, tokenId } = useNFTMint(
-        analysis.id,
-    );
+    const { mint, isLoading, isSuccess, error, txHash } = useMintScore();
 
     const MINT_PRICE = "0.001";
     const MINT_PRICE_USD = "3.50"; // Updated based on ETH price
@@ -46,7 +44,9 @@ export function MintScoreModal({
     }, [isLoading, isSuccess]);
 
     const handleMint = async () => {
-        await mint();
+        if (analysis.id) {
+            await mint(analysis.id);
+        }
     };
 
     const handleClose = () => {
@@ -369,11 +369,6 @@ export function MintScoreModal({
                                 <p className="font-serif text-3xl sm:text-4xl text-text">
                                     Score Minted Successfully
                                 </p>
-                                {tokenId && (
-                                    <p className="text-gold font-serif text-lg">
-                                        NFT #{tokenId}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="border border-gold/20 bg-gold/5 p-4 rounded-sm w-full text-center">
@@ -401,7 +396,7 @@ export function MintScoreModal({
 
                             <div className="flex flex-col w-full gap-2">
                                 <a
-                                    href={`https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS}/${tokenId}`}
+                                    href={`https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-full bg-gold text-surface font-serif py-3 px-4 rounded-sm hover:bg-gold/90 transition-all text-center text-sm"

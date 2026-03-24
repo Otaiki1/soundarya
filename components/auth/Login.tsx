@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 interface LoginProps {
     onSuccess?: () => void;
@@ -47,6 +48,22 @@ export function Login({ onSuccess, onSwitchToSignUp }: LoginProps) {
                 <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
                     Sign In
                 </h2>
+
+                <div className="mb-8 flex flex-col items-center gap-4">
+                    <p className="text-sm text-gray-500 uppercase tracking-widest font-medium">
+                        Secure Web3 Login
+                    </p>
+                    <ConnectButton />
+                </div>
+
+                <div className="relative mb-8 text-center">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                    <span className="relative px-4 bg-white text-xs text-gray-400 uppercase tracking-widest">
+                        Or use email
+                    </span>
+                </div>
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">

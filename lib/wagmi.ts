@@ -1,13 +1,15 @@
 import { http, createConfig } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
-import { coinbaseWallet, injected, walletConnect } from "wagmi/connectors";
+import { injected, walletConnect } from "wagmi/connectors";
 
 const walletConnectProjectId =
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 const connectors = [
-    coinbaseWallet({ appName: "Soundarya" }),
-    injected(),
+    injected({
+        shimDisconnect: true,
+        unstable_shimAsyncInject: 2_000,
+    }),
     ...(walletConnectProjectId
         ? [walletConnect({ projectId: walletConnectProjectId })]
         : []),
@@ -16,6 +18,7 @@ const connectors = [
 export const config = createConfig({
     chains: [base, baseSepolia],
     connectors,
+    multiInjectedProviderDiscovery: false,
     transports: {
         [base.id]: http(),
         [baseSepolia.id]: http(),

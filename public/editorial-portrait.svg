@@ -1,0 +1,43 @@
+<svg width="1200" height="1600" viewBox="0 0 1200 1600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1600" fill="#120D09"/>
+  <rect x="46" y="46" width="1108" height="1508" stroke="url(#frame)" stroke-opacity="0.45"/>
+  <circle cx="860" cy="250" r="200" fill="url(#glow)" fill-opacity="0.35"/>
+  <circle cx="330" cy="1200" r="220" fill="url(#glowSoft)" fill-opacity="0.18"/>
+  <path d="M641 248C565 250 473 300 433 409C393 518 377 713 385 850C394 999 452 1190 604 1203C752 1216 820 1035 827 852C834 676 790 483 741 374C704 293 673 248 641 248Z" fill="url(#body)"/>
+  <path d="M629 273C564 278 502 338 473 430C444 522 434 635 440 735C446 833 464 1018 564 1114C602 1152 653 1160 700 1136C799 1084 833 935 837 832C842 717 823 546 780 431C744 335 691 270 629 273Z" stroke="#E8C892" stroke-opacity="0.82" stroke-width="3"/>
+  <path d="M621 364C582 365 532 405 512 469C492 533 485 625 490 689C496 770 519 914 601 977C633 1001 675 1004 711 985C786 947 814 841 817 757C820 664 807 555 775 474C748 408 690 363 621 364Z" stroke="#F6E2BC" stroke-opacity="0.82" stroke-width="2.5"/>
+  <path d="M534 554C567 526 612 511 653 516C699 521 739 544 764 576" stroke="#D3A96E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M528 678C559 700 593 712 630 714C673 716 716 703 753 678" stroke="#D3A96E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M589 498C567 503 549 516 537 534" stroke="#F7D9A6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M715 500C735 504 753 516 766 534" stroke="#F7D9A6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M620 582C611 625 609 668 615 711" stroke="#F7D9A6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M574 816C607 835 641 843 678 840C713 837 742 822 764 802" stroke="#F7D9A6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M421 1313H1032" stroke="url(#line)" stroke-opacity="0.5"/>
+  <path d="M421 1365H934" stroke="url(#line)" stroke-opacity="0.35"/>
+  <path d="M421 1417H820" stroke="url(#line)" stroke-opacity="0.25"/>
+  <text x="123" y="1330" fill="#E9CFAC" fill-opacity="0.85" font-family="Georgia, serif" font-size="126" font-style="italic">Symmetry</text>
+  <text x="124" y="1394" fill="#C8A97B" fill-opacity="0.72" font-family="Arial, sans-serif" font-size="26" letter-spacing="7">EDITORIAL PORTRAIT SAMPLE</text>
+  <defs>
+    <linearGradient id="frame" x1="72" y1="70" x2="1080" y2="1530" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E6C28D"/>
+      <stop offset="1" stop-color="#6B4C27"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(860 250) rotate(90) scale(200)">
+      <stop stop-color="#E4B67A"/>
+      <stop offset="1" stop-color="#120D09" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowSoft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(330 1200) rotate(90) scale(220)">
+      <stop stop-color="#A6763D"/>
+      <stop offset="1" stop-color="#120D09" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="420" y1="285" x2="877" y2="1210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D1510"/>
+      <stop offset="0.5" stop-color="#15100C"/>
+      <stop offset="1" stop-color="#100B08"/>
+    </linearGradient>
+    <linearGradient id="line" x1="421" y1="1313" x2="1032" y2="1313" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CFA66D"/>
+      <stop offset="1" stop-color="#8F6639"/>
+    </linearGradient>
+  </defs>
+</svg>

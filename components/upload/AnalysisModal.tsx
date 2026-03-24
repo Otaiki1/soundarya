@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { AnalysisPublic } from '@/types/analysis'
+import { useMintScore } from '@/hooks/useMintScore'
+import { useSubscribe } from '@/hooks/useSubscribe'
 
 type ModalState = 'LOADING' | 'RESULT_FREE' | 'RESULT_LOCKED'
 
@@ -23,6 +25,9 @@ const STAGES = [
 export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: AnalysisModalProps) {
   const [visibleStageIndex, setVisibleStageIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>('')
+  
+  const { isSubscribed } = useSubscribe()
+  const { mint, isLoading: isMinting, isSuccess: isMintSuccess, error: mintError } = useMintScore()
 
   useEffect(() => {
     if (!isOpen || analysisResult) return
@@ -54,8 +59,9 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
 
   const modalState: ModalState = useMemo(() => {
     if (!analysisResult) return 'LOADING'
-    return analysisResult.premiumUnlocked ? 'RESULT_FREE' : 'RESULT_LOCKED'
-  }, [analysisResult])
+    if (isSubscribed || isMintSuccess || analysisResult.premiumUnlocked) return 'RESULT_FREE'
+    return 'RESULT_LOCKED'
+  }, [analysisResult, isSubscribed, isMintSuccess])
 
   if (!isOpen) return null
 
@@ -74,7 +80,7 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
           <div className="p-8 sm:p-12 flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-full border border-gold/30 border-t-gold animate-spin mb-6" />
             <h2 className="font-serif text-4xl text-gold-light mb-2">Analysing your face</h2>
-            <p className="text-[11px] uppercase tracking-[0.15em] text-muted mb-10">Grok AI · 7 dimensions</p>
+            <p className="text-[11px] uppercase tracking-[0.15em] text-muted mb-10">Soundarya Oracle · 7 dimensions</p>
 
             <div className="w-full max-w-lg space-y-4 text-left">
               {STAGES.map((stage, index) => {
@@ -117,20 +123,29 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                   )}
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-8">
                   {[
-                    { label: 'Overall Score', score: analysisResult.overallScore, max: 10 },
                     { label: 'Symmetry', score: analysisResult.symmetryScore, max: 100 },
-                    { label: 'Golden Ratio', score: analysisResult.goldenRatioScore, max: 100 },
-                    { label: 'Bone Structure', score: analysisResult.boneStructureScore, max: 100 }
+                    { label: 'Proportion', score: analysisResult.goldenRatioScore, max: 100 },
+                    { label: 'Harmony', score: analysisResult.harmonyScore, max: 100 },
+                    { label: 'Structure', score: analysisResult.boneStructureScore, max: 100 }
                   ].map((metric) => {
                     const progress = Math.max(0, Math.min(100, (metric.score / metric.max) * 100))
                     return (
-                      <div key={metric.label} className="bg-surface border border-gold/20 p-4">
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-muted mb-2">{metric.label}</p>
-                        <p className="font-serif text-4xl leading-none text-gold mb-3">{metric.score.toFixed(metric.max === 10 ? 1 : 0)}</p>
-                        <div className="h-[2px] bg-white/10">
-                          <div className="h-full bg-linear-to-r from-gold-dark to-gold" style={{ width: `${progress}%` }} />
+                      <div key={metric.label} className="group">
+                        <div className="flex justify-between items-end mb-4">
+                          <span className="text-[9px] uppercase tracking-[0.3em] text-soft/60 group-hover:text-gold-bright transition-colors">
+                            {metric.label}
+                          </span>
+                          <span className="font-serif text-xl group-hover:text-gold-bright transition-colors">
+                            {metric.score.toFixed(0)}
+                          </span>
+                        </div>
+                        <div className="h-[2px] w-full bg-white/5 relative overflow-hidden">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-gold-bright transition-all duration-1000 ease-expo"
+                            style={{ width: `${progress}%` }}
+                          />
                         </div>
                       </div>
                     )
@@ -167,9 +182,14 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                 <p className="text-sm text-muted mb-5">
                   {analysisResult.premiumHook}
                 </p>
-                <button className="bg-gold text-deep px-8 py-3 text-[11px] uppercase tracking-[0.18em] hover:bg-gold-light transition-colors">
-                  Pay with ETH to Unlock
+                <button 
+                  onClick={() => analysisResult.id && mint(analysisResult.id)}
+                  disabled={isMinting}
+                  className="btn-primary w-full max-w-sm mt-4"
+                >
+                  {isMinting ? 'Verification in Progress...' : 'Pay with ETH to Unlock Full Report'}
                 </button>
+                {mintError && <p className="text-red-400 text-[10px] mt-2">{mintError}</p>}
                 <p className="text-[11px] text-muted mt-3">or Subscribe with ETH for unlimited</p>
               </div>
             </div>

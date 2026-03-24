@@ -7,13 +7,15 @@ import type { AnalysisPublic, LoadingStage } from '@/types/analysis'
 type DropZoneState = 'idle' | 'uploading' | 'analysing' | 'error'
 
 interface DropZoneProps {
-  onResult: (data: AnalysisPublic) => void
+  onResult?: (data: AnalysisPublic) => void
+  onAnalysisComplete?: (data: AnalysisPublic) => void
 }
 
-export function DropZone({ onResult }: DropZoneProps) {
+export function DropZone({ onResult, onAnalysisComplete }: DropZoneProps) {
   const [state, setState] = useState<DropZoneState>('idle')
   const [progress, setProgress] = useState<LoadingStage>('detecting')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const handleResult = onResult ?? onAnalysisComplete
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -54,14 +56,16 @@ export function DropZone({ onResult }: DropZoneProps) {
       }
 
       const data: AnalysisPublic = await res.json()
-      onResult(data)
+      if (handleResult) {
+        handleResult(data)
+      }
     } catch (err) {
       setState('error')
       setErrorMessage(err instanceof Error ? err.message : 'Analysis failed. Please try again.')
     } finally {
       clearInterval(interval)
     }
-  }, [onResult])
+  }, [handleResult])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

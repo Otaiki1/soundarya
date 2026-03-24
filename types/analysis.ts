@@ -1,4 +1,4 @@
-import type { GrokAnalysisResult, ScoreCategory } from './grok'
+import type { AIAnalysisResult, ScoreCategory } from './ai'
 
 /**
  * Loading stages for analysis animation
@@ -8,7 +8,7 @@ export type LoadingStage = 'detecting' | 'symmetry' | 'ratio' | 'structure' | 'w
 /**
  * Analysis database record (uses snake_case from DB)
  */
-export interface Analysis extends GrokAnalysisResult {
+export interface Analysis extends AIAnalysisResult {
   id: string
   user_id?: string
   session_id: string

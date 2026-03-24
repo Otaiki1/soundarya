@@ -3,11 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { validateImage, processImageForAnalysis, imageToBase64 } from '@/lib/image-validation'
 import { uploadToR2 } from '@/lib/r2'
-import { analyseWithGrok } from '@/lib/grok'
+import { analyseWithOpenAI } from '@/lib/openai'
 import { getCountryFromIP } from '@/lib/ip-geolocation'
 import { extractIPFromRequest } from '@/lib/ip-geolocation'
 import { hashIP } from '@/lib/rate-limit'
-import { getOrCreateSessionId } from '@/lib/session'
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,16 +72,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert to base64 for Grok API
+    // Convert to base64 for OpenAI vision analysis
     const imageBase64 = imageToBase64(processedImage.buffer)
 
     // Get country for leaderboard
     const countryCode = await getCountryFromIP(clientIP)
 
-    // Call Grok API (free tier)
-    const grokResult = await analyseWithGrok(imageBase64, 'image/jpeg', 'free')
+    // Call OpenAI API (free tier)
+    const aiResult = await analyseWithOpenAI(imageBase64, 'image/jpeg', 'free')
 
-    if (!grokResult.success || !grokResult.result) {
+    if (!aiResult.success || !aiResult.result) {
       // Clean up R2 file on error
       await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cleanup`, {
         method: 'POST',
@@ -91,12 +90,12 @@ export async function POST(request: NextRequest) {
       }).catch(() => {}) // Ignore cleanup errors
 
       return NextResponse.json(
-        { error: 'AI analysis failed: ' + (grokResult.error?.error || 'Unknown error') },
+        { error: 'AI analysis failed: ' + (aiResult.error?.error || 'Unknown error') },
         { status: 500 }
       )
     }
 
-    const analysis = grokResult.result
+    const analysis = aiResult.result
 
     // Store analysis in database
     const { data: storedAnalysis, error: dbError } = await supabaseAdmin

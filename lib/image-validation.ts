@@ -123,7 +123,7 @@ export async function processImageForAnalysis(file: File): Promise<ProcessedImag
 }
 
 /**
- * Converts processed image buffer to base64 for Grok API
+ * Converts processed image buffer to base64 for vision API input
  */
 export function imageToBase64(buffer: Buffer, mimeType: string = 'image/jpeg'): string {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
