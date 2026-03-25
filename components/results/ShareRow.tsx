@@ -51,8 +51,10 @@ export function ShareRow({ analysis }: ShareRowProps) {
     };
 
     const shareUrl = `${getOrigin()}/analyse/${analysisId}`;
+    const isPersisted = analysis.persisted !== false;
 
     const handleCopyLink = async () => {
+        if (!isPersisted) return;
         try {
             await navigator.clipboard.writeText(shareUrl);
             setCopied(true);
@@ -77,12 +79,18 @@ export function ShareRow({ analysis }: ShareRowProps) {
                     <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
                         Share Your <em className="text-gold">Results</em>
                     </h3>
+                    {!isPersisted && (
+                        <p className="mt-4 text-sm text-amber-200/80">
+                            This result is temporary and cannot be shared or minted until database connectivity is restored.
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                     <button
                         onClick={handleCopyLink}
-                        className={`flex items-center justify-center gap-3 px-6 py-4 border text-[10px] tracking-[0.16em] uppercase transition-all rounded-sm ${copied ? "border-gold text-gold bg-gold/5" : "border-white/10 text-muted hover:border-gold hover:text-gold hover:bg-gold/5"}`}
+                        disabled={!isPersisted}
+                        className={`flex items-center justify-center gap-3 px-6 py-4 border text-[10px] tracking-[0.16em] uppercase transition-all rounded-sm disabled:cursor-not-allowed disabled:opacity-40 ${copied ? "border-gold text-gold bg-gold/5" : "border-white/10 text-muted hover:border-gold hover:text-gold hover:bg-gold/5"}`}
                     >
                         <span className="text-base">{copied ? "✓" : "🔗"}</span>
                         {copied ? "Copied" : "Copy Shared Report"}
@@ -90,7 +98,8 @@ export function ShareRow({ analysis }: ShareRowProps) {
                     
                     <button
                         onClick={() => setIsMintModalOpen(true)}
-                        className="flex items-center justify-center gap-3 px-6 py-4 border border-gold text-gold bg-gold/5 text-[10px] tracking-[0.16em] uppercase hover:bg-gold/10 transition-all rounded-sm"
+                        disabled={!isPersisted}
+                        className="flex items-center justify-center gap-3 px-6 py-4 border border-gold text-gold bg-gold/5 text-[10px] tracking-[0.16em] uppercase hover:bg-gold/10 transition-all rounded-sm disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         <span className="text-base">✦</span>
                         Mint Onchain NFT

@@ -23,7 +23,6 @@ export interface Analysis extends AIAnalysisResult {
   // Metadata
   country_code?: string
   country_name?: string
-  r2_key?: string
   photo_deleted_at?: string
   shared_count: number
   challenge_token?: string
@@ -54,6 +53,8 @@ export interface AnalysisPublic {
   countryCode?: string
   countryName?: string
   premiumUnlocked: boolean
+  persisted?: boolean
+  persistenceError?: string
   createdAt: string
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { testOpenAIAPI } from '@/lib/openai'
+import { testGeminiAPI } from '@/lib/gemini'
 
 export const runtime = 'edge'
 
@@ -27,34 +27,29 @@ export async function GET() {
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
     !!process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  // Check OpenAI API configuration and connectivity
-  checks.openai_configured = !!process.env.OPENAI_API_KEY
+  // Check Gemini API configuration and connectivity
+  checks.gemini_configured = !!process.env.GEMINI_API_KEY
 
-  if (checks.openai_configured) {
+  if (checks.gemini_configured) {
     try {
-      const openAITest = await testOpenAIAPI()
-      checks.openai_api = openAITest.available
-      if (!openAITest.available) {
-        checks.openai_api_error = openAITest.error || 'Unknown error'
+      const geminiTest = await testGeminiAPI()
+      checks.gemini_api = geminiTest.available
+      if (!geminiTest.available) {
+        checks.gemini_api_error = geminiTest.error || 'Unknown error'
       }
     } catch (error) {
-      checks.openai_api = false
-      checks.openai_api_error = String(error)
+      checks.gemini_api = false
+      checks.gemini_api_error = String(error)
     }
   } else {
-    checks.openai_api = false
-    checks.openai_api_error = 'OPENAI_API_KEY not configured'
+    checks.gemini_api = false
+    checks.gemini_api_error = 'GEMINI_API_KEY not configured'
   }
 
-  // Check R2 configuration
-  checks.r2_configured =
-    !!process.env.CLOUDFLARE_R2_ENDPOINT &&
-    !!process.env.CLOUDFLARE_R2_ACCESS_KEY_ID &&
-    !!process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
-    !!process.env.CLOUDFLARE_R2_BUCKET_NAME
+  checks.image_storage = 'in-memory-only'
 
   // Overall status - all critical services must be working
-  const allOk = checks.database && checks.supabase_configured && checks.openai_api && checks.r2_configured
+  const allOk = checks.database && checks.supabase_configured && checks.gemini_api
   const statusCode = allOk ? 200 : 503
 
   return NextResponse.json(checks, { status: statusCode })

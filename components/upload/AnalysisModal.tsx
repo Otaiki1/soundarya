@@ -154,6 +154,17 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
               </div>
 
               <div className="mt-8 space-y-6">
+                {analysisResult.persistenceError ? (
+                  <div className="border border-amber-400/30 bg-amber-500/8 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-amber-300 mb-2">
+                      Temporary Result
+                    </p>
+                    <p className="text-sm text-amber-100/80 leading-relaxed">
+                      {analysisResult.persistenceError}
+                    </p>
+                  </div>
+                ) : null}
+
                 <div>
                   <h3 className="font-serif text-3xl text-gold-light mb-2">Analysis</h3>
                   <p className="text-sm text-muted leading-relaxed">{analysisResult.summary}</p>
@@ -184,10 +195,14 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                 </p>
                 <button 
                   onClick={() => analysisResult.id && mint(analysisResult.id)}
-                  disabled={isMinting}
+                  disabled={isMinting || analysisResult.persisted === false}
                   className="btn-primary w-full max-w-sm mt-4"
                 >
-                  {isMinting ? 'Verification in Progress...' : 'Pay with ETH to Unlock Full Report'}
+                  {analysisResult.persisted === false
+                    ? 'Save unavailable while database is offline'
+                    : isMinting
+                      ? 'Verification in Progress...'
+                      : 'Pay with ETH to Unlock Full Report'}
                 </button>
                 {mintError && <p className="text-red-400 text-[10px] mt-2">{mintError}</p>}
                 <p className="text-[11px] text-muted mt-3">or Subscribe with ETH for unlimited</p>

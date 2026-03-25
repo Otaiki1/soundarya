@@ -1,15 +1,15 @@
 import { getPromptForTier } from "./prompts";
 import type { AIAnalysisResult, AnalysisTier, ScoreCategory } from "@/types/ai";
 
-export interface OpenAIAPIError {
+export interface GeminiAPIError {
   error: string;
   code?: string;
 }
 
-export interface OpenAIAPIResponse {
+export interface GeminiAPIResponse {
   success: boolean;
   result?: AIAnalysisResult;
-  error?: OpenAIAPIError;
+  error?: GeminiAPIError;
 }
 
 function getAnalysisSchema(tier: AnalysisTier) {
@@ -43,33 +43,24 @@ function getAnalysisSchema(tier: AnalysisTier) {
   };
 
   return {
-    name: "soundarya_analysis",
-    strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: Object.keys(properties),
-      properties,
-    },
+    type: "object",
+    additionalProperties: false,
+    required: Object.keys(properties),
+    properties,
   } as const;
 }
 
 function extractOutputText(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
 
-  const directOutputText = (payload as { output_text?: unknown }).output_text;
-  if (typeof directOutputText === "string" && directOutputText.trim()) {
-    return directOutputText;
-  }
+  const candidates = (payload as { candidates?: unknown }).candidates;
+  if (!Array.isArray(candidates)) return null;
 
-  const output = (payload as { output?: unknown }).output;
-  if (!Array.isArray(output)) return null;
+  for (const candidate of candidates) {
+    const parts = (candidate as { content?: { parts?: unknown } }).content?.parts;
+    if (!Array.isArray(parts)) continue;
 
-  for (const item of output) {
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-
-    for (const part of content) {
+    for (const part of parts) {
       const text = (part as { text?: unknown }).text;
       if (typeof text === "string" && text.trim()) {
         return text;
@@ -83,7 +74,7 @@ function extractOutputText(payload: unknown): string | null {
 function validateAnalysisResult(
   parsed: AIAnalysisResult,
   tier: AnalysisTier,
-): OpenAIAPIResponse {
+): GeminiAPIResponse {
   const requiredFields = [
     "overallScore",
     "symmetryScore",
@@ -212,67 +203,72 @@ function validateAnalysisResult(
   };
 }
 
-export async function analyseWithOpenAI(
+function stripDataUrlPrefix(imageBase64: string): string {
+  const commaIndex = imageBase64.indexOf(",");
+  return commaIndex >= 0 ? imageBase64.slice(commaIndex + 1) : imageBase64;
+}
+
+export async function analyseWithGemini(
   imageBase64: string,
-  _mimeType: string,
+  mimeType: string,
   tier: AnalysisTier,
-): Promise<OpenAIAPIResponse> {
+): Promise<GeminiAPIResponse> {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return {
         success: false,
-        error: { error: "OPENAI_API_KEY is not configured" },
+        error: { error: "GEMINI_API_KEY is not configured" },
       };
     }
 
     const prompt = getPromptForTier(tier);
-    const model = process.env.OPENAI_ANALYSIS_MODEL || "gpt-4o-mini";
+    const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: prompt.systemPrompt,
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: prompt.userPrompt,
-              },
-              {
-                type: "input_image",
-                image_url: imageBase64,
-                detail: "high",
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            ...getAnalysisSchema(tier),
-          },
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY,
         },
-        temperature: 0.2,
-        max_output_tokens: 1800,
-      }),
-    });
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: prompt.systemPrompt }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt.userPrompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: stripDataUrlPrefix(imageBase64),
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseJsonSchema: getAnalysisSchema(tier),
+            temperature: 0.2,
+            maxOutputTokens: 1800,
+          },
+        }),
+      },
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
         error: {
-          error: `OpenAI API error: ${response.status} ${response.statusText}`,
+          error: `Gemini API error: ${response.status} ${response.statusText}`,
           code:
-            typeof errorData?.error?.code === "string"
-              ? errorData.error.code
+            typeof errorData?.error?.status === "string"
+              ? errorData.error.status
               : undefined,
         },
       };
@@ -285,7 +281,7 @@ export async function analyseWithOpenAI(
       return {
         success: false,
         error: {
-          error: "Invalid response from OpenAI: missing structured output",
+          error: "Invalid response from Gemini: missing structured output",
         },
       };
     }
@@ -297,46 +293,56 @@ export async function analyseWithOpenAI(
     } catch {
       return {
         success: false,
-        error: { error: "Failed to parse OpenAI response as JSON" },
+        error: { error: "Failed to parse Gemini response as JSON" },
       };
     }
 
     return validateAnalysisResult(parsed, tier);
   } catch (error) {
-    console.error("OpenAI API call error:", error);
+    console.error("Gemini API call error:", error);
     return {
       success: false,
       error: {
         error:
           error instanceof Error
             ? error.message
-            : "Unknown error calling OpenAI API",
+            : "Unknown error calling Gemini API",
       },
     };
   }
 }
 
-export async function testOpenAIAPI(): Promise<{
+export async function testGeminiAPI(): Promise<{
   available: boolean;
   error?: string;
 }> {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return { available: false, error: "OPENAI_API_KEY not configured" };
+    if (!process.env.GEMINI_API_KEY) {
+      return { available: false, error: "GEMINI_API_KEY not configured" };
     }
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: "Reply with the single word online." }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 10,
+          },
+        }),
       },
-      body: JSON.stringify({
-        model: process.env.OPENAI_ANALYSIS_MODEL || "gpt-4o-mini",
-        input: "Reply with the single word online.",
-        max_output_tokens: 10,
-      }),
-    });
+    );
 
     if (response.ok) {
       return { available: true };

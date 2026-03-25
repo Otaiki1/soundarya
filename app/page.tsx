@@ -221,7 +221,16 @@ export default function Home() {
             });
 
             if (!response.ok) {
-                throw new Error("Analysis failed");
+                let message = "Analysis failed";
+                try {
+                    const errorData = await response.json();
+                    if (typeof errorData?.error === "string") {
+                        message = errorData.error;
+                    }
+                } catch {
+                    // Ignore JSON parse errors and keep the fallback message.
+                }
+                throw new Error(message);
             }
 
             const data = await response.json();

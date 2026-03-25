@@ -1,19 +1,42 @@
 import { http, createConfig } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
-import { injected, walletConnect } from "wagmi/connectors";
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import {
+    injectedWallet,
+    walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 
 const walletConnectProjectId =
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
-const connectors = [
-    injected({
-        shimDisconnect: true,
-        unstable_shimAsyncInject: 2_000,
-    }),
-    ...(walletConnectProjectId
-        ? [walletConnect({ projectId: walletConnectProjectId })]
-        : []),
-];
+const connectors = walletConnectProjectId
+    ? connectorsForWallets(
+          [
+              {
+                  groupName: "Recommended",
+                  wallets: [
+                      injectedWallet,
+                      walletConnectWallet,
+                  ],
+              },
+          ],
+          {
+              appName: "Soundarya",
+              projectId: walletConnectProjectId,
+          },
+      )
+    : connectorsForWallets(
+          [
+              {
+                  groupName: "Recommended",
+                  wallets: [injectedWallet],
+              },
+          ],
+          {
+              appName: "Soundarya",
+              projectId: "soundarya",
+          },
+      );
 
 export const config = createConfig({
     chains: [base, baseSepolia],

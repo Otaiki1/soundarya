@@ -58,8 +58,7 @@ CREATE TABLE public.analyses (
   -- Metadata
   country_code      CHAR(2),
   country_name      TEXT,
-  r2_key            TEXT,                           -- null after deletion
-  photo_deleted_at  TIMESTAMPTZ,
+  photo_deleted_at  TIMESTAMPTZ,                   -- in-memory flow marks deletion immediately
   shared_count      INTEGER DEFAULT 0,
   challenge_token   TEXT UNIQUE,
 

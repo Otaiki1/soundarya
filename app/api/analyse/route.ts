@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { validateImage, processImageForAnalysis, imageToBase64 } from '@/lib/image-validation'
-import { uploadToR2 } from '@/lib/r2'
-import { analyseWithOpenAI } from '@/lib/openai'
+import { analyseWithGemini } from '@/lib/gemini'
 import { getCountryFromIP } from '@/lib/ip-geolocation'
 import { extractIPFromRequest } from '@/lib/ip-geolocation'
 import { hashIP } from '@/lib/rate-limit'
+import { randomUUID } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,37 +58,16 @@ export async function POST(request: NextRequest) {
     // Process image for analysis (resize, compress)
     const processedImage = await processImageForAnalysis(photo)
 
-    // Upload to R2 storage
-    const uploadResult = await uploadToR2(
-      processedImage.buffer,
-      'image/jpeg',
-      photo.name
-    )
-
-    if (!uploadResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to upload image: ' + uploadResult.error },
-        { status: 500 }
-      )
-    }
-
-    // Convert to base64 for OpenAI vision analysis
+    // Convert to base64 for Gemini image analysis
     const imageBase64 = imageToBase64(processedImage.buffer)
 
     // Get country for leaderboard
-    const countryCode = await getCountryFromIP(clientIP)
+    const country = await getCountryFromIP(clientIP)
 
-    // Call OpenAI API (free tier)
-    const aiResult = await analyseWithOpenAI(imageBase64, 'image/jpeg', 'free')
+    // Call Gemini API (free tier)
+    const aiResult = await analyseWithGemini(imageBase64, 'image/jpeg', 'free')
 
     if (!aiResult.success || !aiResult.result) {
-      // Clean up R2 file on error
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cleanup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: uploadResult.key })
-      }).catch(() => {}) // Ignore cleanup errors
-
       return NextResponse.json(
         { error: 'AI analysis failed: ' + (aiResult.error?.error || 'Unknown error') },
         { status: 500 }
@@ -103,8 +82,8 @@ export async function POST(request: NextRequest) {
       .insert({
         session_id: sessionId,
         ip_hash: ipHash,
-        country_code: countryCode,
-        r2_key: uploadResult.key,
+        country_code: country.countryCode,
+        country_name: country.countryName,
         overall_score: analysis.overallScore,
         symmetry_score: analysis.symmetryScore,
         golden_ratio_score: analysis.goldenRatioScore,
@@ -120,24 +99,36 @@ export async function POST(request: NextRequest) {
         free_tip: analysis.freeTip,
         premium_hook: analysis.premiumHook,
         // premium_tips not stored for free tier
-        photo_deleted_at: null
+        photo_deleted_at: new Date().toISOString()
       })
       .select('id, created_at')
       .single()
 
     if (dbError) {
       console.error('Database error:', dbError)
-      // Clean up R2 file on error
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cleanup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: uploadResult.key })
-      }).catch(() => {})
-
-      return NextResponse.json(
-        { error: 'Failed to save analysis' },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        id: randomUUID(),
+        overallScore: analysis.overallScore,
+        symmetryScore: analysis.symmetryScore,
+        goldenRatioScore: analysis.goldenRatioScore,
+        boneStructureScore: analysis.boneStructureScore,
+        harmonyScore: analysis.harmonyScore,
+        skinScore: analysis.skinScore,
+        dimorphismScore: analysis.dimorphismScore,
+        percentile: analysis.percentile,
+        category: analysis.category,
+        summary: analysis.summary,
+        strengths: analysis.strengths,
+        weakestDimension: analysis.weakestDimension,
+        freeTip: analysis.freeTip,
+        premiumHook: analysis.premiumHook,
+        countryCode: country.countryCode,
+        countryName: country.countryName,
+        premiumUnlocked: false,
+        persisted: false,
+        persistenceError: 'Analysis completed, but it could not be saved. Check your Supabase connection.',
+        createdAt: new Date().toISOString(),
+      })
     }
 
     // Return free-tier response (no premium content)
@@ -157,7 +148,10 @@ export async function POST(request: NextRequest) {
       weakestDimension: analysis.weakestDimension,
       freeTip: analysis.freeTip,
       premiumHook: analysis.premiumHook,
-      countryCode,
+      countryCode: country.countryCode,
+      countryName: country.countryName,
+      premiumUnlocked: false,
+      persisted: true,
       createdAt: storedAnalysis.created_at
     }
 
