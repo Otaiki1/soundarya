@@ -47,6 +47,31 @@ const WEAKEST_DIMENSIONS = [
   "Adiposity",
 ];
 
+const DIMENSION_ALIASES: Record<string, string> = {
+  symmetry: "Symmetry",
+  harmony: "Harmony",
+  proportionality: "Proportionality",
+  proportion: "Proportionality",
+  proportions: "Proportionality",
+  "golden ratio": "Proportionality",
+  goldenratio: "Proportionality",
+  ratio: "Proportionality",
+  averageness: "Averageness",
+  average: "Averageness",
+  "bone structure": "Bone Structure",
+  bonestructure: "Bone Structure",
+  structure: "Bone Structure",
+  "skin quality": "Skin Quality",
+  skinquality: "Skin Quality",
+  skin: "Skin Quality",
+  dimorphism: "Dimorphism",
+  "sexual dimorphism": "Dimorphism",
+  neoteny: "Neoteny",
+  adiposity: "Adiposity",
+  facialadiposity: "Adiposity",
+  "facial adiposity": "Adiposity",
+};
+
 function getAnalysisSchema(tier: AnalysisTier) {
   const properties = {
     overallScore: { type: "number" },
@@ -182,6 +207,43 @@ function validateIntegerScore(score: number): boolean {
   return Number.isInteger(score) && score >= 1 && score <= 100;
 }
 
+function normalizeDimensionLabel(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  const compact = normalized.replace(/\s+/g, "");
+  return (
+    DIMENSION_ALIASES[normalized] ??
+    DIMENSION_ALIASES[compact] ??
+    value
+  );
+}
+
+function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
+  return {
+    ...parsed,
+    weakestDimension:
+      typeof parsed.weakestDimension === "string"
+        ? normalizeDimensionLabel(parsed.weakestDimension)
+        : parsed.weakestDimension,
+    improvementPredictions: Array.isArray(parsed.improvementPredictions)
+      ? parsed.improvementPredictions.map((prediction) => ({
+          ...prediction,
+          affectedDimensions: Array.isArray(prediction.affectedDimensions)
+            ? prediction.affectedDimensions.map((dimension) =>
+                typeof dimension === "string"
+                  ? normalizeDimensionLabel(dimension)
+                  : dimension,
+              )
+            : prediction.affectedDimensions,
+        }))
+      : parsed.improvementPredictions,
+  };
+}
+
 function validateImprovementPredictions(
   predictions: ImprovementPrediction[] | undefined,
 ) {
@@ -202,6 +264,8 @@ function validateAnalysisResult(
   parsed: AIAnalysisResult,
   tier: AnalysisTier,
 ): GeminiAPIResponse {
+  const normalized = normalizeAnalysisResult(parsed);
+
   const requiredFields = [
     "overallScore",
     "percentile",
@@ -223,7 +287,7 @@ function validateAnalysisResult(
     "freeTip",
   ] as const;
 
-  const missingFields = requiredFields.filter((field) => !(field in parsed));
+  const missingFields = requiredFields.filter((field) => !(field in normalized));
   if (missingFields.length > 0) {
     return {
       success: false,
@@ -233,35 +297,35 @@ function validateAnalysisResult(
     };
   }
 
-  if (parsed.overallScore < 1 || parsed.overallScore > 10) {
+  if (normalized.overallScore < 1 || normalized.overallScore > 10) {
     return {
       success: false,
       error: { error: "overallScore must be between 1.0 and 10.0" },
     };
   }
 
-  if (parsed.percentile < 1 || parsed.percentile > 99) {
+  if (normalized.percentile < 1 || normalized.percentile > 99) {
     return {
       success: false,
       error: { error: "percentile must be an integer between 1 and 99" },
     };
   }
 
-  if (!SCORE_CATEGORIES.includes(parsed.category)) {
+  if (!SCORE_CATEGORIES.includes(normalized.category)) {
     return {
       success: false,
       error: { error: "Invalid category returned by Gemini" },
     };
   }
 
-  if (!FACE_ARCHETYPES.includes(parsed.faceArchetype)) {
+  if (!FACE_ARCHETYPES.includes(normalized.faceArchetype)) {
     return {
       success: false,
       error: { error: "Invalid faceArchetype returned by Gemini" },
     };
   }
 
-  if (parsed.confidenceScore < 0 || parsed.confidenceScore > 1) {
+  if (normalized.confidenceScore < 0 || normalized.confidenceScore > 1) {
     return {
       success: false,
       error: { error: "confidenceScore must be between 0 and 1" },
@@ -269,15 +333,15 @@ function validateAnalysisResult(
   }
 
   const dimensionScores = [
-    parsed.symmetryScore,
-    parsed.harmonyScore,
-    parsed.proportionalityScore,
-    parsed.averagenessScore,
-    parsed.boneStructureScore,
-    parsed.skinScore,
-    parsed.dimorphismScore,
-    parsed.neotenyScore,
-    parsed.adiposityScore,
+    normalized.symmetryScore,
+    normalized.harmonyScore,
+    normalized.proportionalityScore,
+    normalized.averagenessScore,
+    normalized.boneStructureScore,
+    normalized.skinScore,
+    normalized.dimorphismScore,
+    normalized.neotenyScore,
+    normalized.adiposityScore,
   ];
 
   if (!dimensionScores.every(validateIntegerScore)) {
@@ -289,7 +353,7 @@ function validateAnalysisResult(
     };
   }
 
-  if (!WEAKEST_DIMENSIONS.includes(parsed.weakestDimension)) {
+  if (!WEAKEST_DIMENSIONS.includes(normalized.weakestDimension)) {
     return {
       success: false,
       error: {
@@ -298,9 +362,9 @@ function validateAnalysisResult(
     };
   }
 
-  const strengthCount = parsed.strengths.length;
+  const strengthCount = normalized.strengths.length;
   if (
-    !Array.isArray(parsed.strengths) ||
+    !Array.isArray(normalized.strengths) ||
     strengthCount < 3 ||
     (tier === "free" ? strengthCount !== 3 : strengthCount > 7)
   ) {
@@ -312,9 +376,9 @@ function validateAnalysisResult(
 
   if (tier === "free") {
     return {
-      success: true,
-      result: {
-        ...parsed,
+        success: true,
+        result: {
+        ...normalized,
         weaknesses: [],
         tradeoffs: [],
         premiumTips: [],
@@ -325,9 +389,9 @@ function validateAnalysisResult(
   }
 
   if (
-    !Array.isArray(parsed.weaknesses) ||
-    parsed.weaknesses.length < 3 ||
-    parsed.weaknesses.length > 5
+    !Array.isArray(normalized.weaknesses) ||
+    normalized.weaknesses.length < 3 ||
+    normalized.weaknesses.length > 5
   ) {
     return {
       success: false,
@@ -335,21 +399,21 @@ function validateAnalysisResult(
     };
   }
 
-  if (!Array.isArray(parsed.tradeoffs)) {
+  if (!Array.isArray(normalized.tradeoffs)) {
     return {
       success: false,
       error: { error: "tradeoffs must be an array" },
     };
   }
 
-  if (!Array.isArray(parsed.premiumTips) || parsed.premiumTips.length !== 20) {
+  if (!Array.isArray(normalized.premiumTips) || normalized.premiumTips.length !== 20) {
     return {
       success: false,
       error: { error: "premiumTips must contain exactly 20 items" },
     };
   }
 
-  if (!Array.isArray(parsed.citations) || parsed.citations.length === 0) {
+  if (!Array.isArray(normalized.citations) || normalized.citations.length === 0) {
     return {
       success: false,
       error: { error: "Premium and elite tiers require citations" },
@@ -358,10 +422,10 @@ function validateAnalysisResult(
 
   if (tier === "elite") {
     if (
-      !Array.isArray(parsed.improvementPredictions) ||
-      parsed.improvementPredictions.length < 4 ||
-      parsed.improvementPredictions.length > 6 ||
-      !validateImprovementPredictions(parsed.improvementPredictions)
+      !Array.isArray(normalized.improvementPredictions) ||
+      normalized.improvementPredictions.length < 4 ||
+      normalized.improvementPredictions.length > 6 ||
+      !validateImprovementPredictions(normalized.improvementPredictions)
     ) {
       return {
         success: false,
@@ -373,9 +437,9 @@ function validateAnalysisResult(
   return {
     success: true,
     result: {
-      ...parsed,
+      ...normalized,
       improvementPredictions:
-        parsed.improvementPredictions ?? [],
+        normalized.improvementPredictions ?? [],
     },
   };
 }
