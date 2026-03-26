@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Navbar } from "@/components/ui/Navbar";
 import { AnalysisModal } from "@/components/upload/AnalysisModal";
+import { storeScanRecord } from "@/lib/scans";
 import { getOrCreateSessionId } from "@/lib/session";
 import type { AnalysisPublic } from "@/types/analysis";
 
@@ -235,6 +236,9 @@ export default function Home() {
 
             const data = await response.json();
             setResult(data);
+            if (data?.id && data?.persisted !== false) {
+                storeScanRecord(data.id);
+            }
         } catch (error) {
             console.error(error);
         } finally {

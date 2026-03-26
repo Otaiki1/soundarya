@@ -27,6 +27,18 @@ export async function GET() {
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
     !!process.env.SUPABASE_SERVICE_ROLE_KEY
 
+  checks.chain_configured =
+    !!process.env.NEXT_PUBLIC_SCORE_NFT_ADDRESS &&
+    !!process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS &&
+    !!process.env.NEXT_PUBLIC_CHAIN_ID
+
+  checks.signers_configured =
+    !!process.env.MINTER_PRIVATE_KEY &&
+    !!process.env.RELAYER_PRIVATE_KEY &&
+    !!process.env.BASE_RPC_URL
+
+  checks.resend_configured = !!process.env.RESEND_API_KEY
+
   // Check Gemini API configuration and connectivity
   checks.gemini_configured = !!process.env.GEMINI_API_KEY
 
@@ -49,7 +61,12 @@ export async function GET() {
   checks.image_storage = 'in-memory-only'
 
   // Overall status - all critical services must be working
-  const allOk = checks.database && checks.supabase_configured && checks.gemini_api
+  const allOk =
+    checks.database &&
+    checks.supabase_configured &&
+    checks.gemini_api &&
+    checks.chain_configured &&
+    checks.signers_configured
   const statusCode = allOk ? 200 : 503
 
   return NextResponse.json(checks, { status: statusCode })

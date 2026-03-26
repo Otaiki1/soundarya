@@ -1,102 +1,101 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
+}
+
+function toPublicAnalysis(analysis: Record<string, any>) {
+  const unlockTier = Number(analysis.unlock_tier ?? 0);
+  const premiumVisible = unlockTier >= 2 || analysis.premium_unlocked;
+  const eliteVisible = unlockTier >= 3;
+
+  return {
+    id: analysis.id,
+    overallScore: Number(analysis.overall_score),
+    percentile: analysis.percentile,
+    category: analysis.category,
+    faceArchetype: analysis.face_archetype,
+    confidenceScore: Number(analysis.confidence_score ?? 0),
+    symmetryScore: analysis.symmetry_score,
+    harmonyScore: analysis.harmony_score,
+    proportionalityScore: analysis.proportionality_score,
+    averagenessScore: analysis.averageness_score,
+    boneStructureScore: analysis.bone_structure_score,
+    skinScore: analysis.skin_score,
+    dimorphismScore: analysis.dimorphism_score,
+    neotenyScore: analysis.neoteny_score,
+    adiposityScore: analysis.adiposity_score,
+    executiveSummary: analysis.summary,
+    strengths: analysis.strengths ?? [],
+    weaknesses: premiumVisible ? analysis.weaknesses ?? [] : [],
+    tradeoffs: premiumVisible ? analysis.tradeoffs ?? [] : [],
+    weakestDimension: analysis.weakest_dimension,
+    freeTip: analysis.free_tip,
+    premiumTips: premiumVisible ? analysis.premium_tips ?? [] : [],
+    citations: premiumVisible ? analysis.citations ?? [] : [],
+    improvementPredictions: eliteVisible
+      ? analysis.improvement_predictions ?? []
+      : [],
+    countryCode: analysis.country_code,
+    countryName: analysis.country_name,
+    premiumUnlocked: premiumVisible,
+    unlockTier,
+    createdAt: analysis.created_at,
+    goldenRatioScore: analysis.proportionality_score,
+    summary: analysis.summary,
+    premiumHook:
+      "Unlock the extended report to see weaknesses, citations, and practical next-step guidance.",
+  };
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id: analysisId } = await params
+    const { id: analysisId } = await params;
     if (!analysisId) {
       return NextResponse.json(
-        { error: 'Analysis ID is required' },
-        { status: 400 }
-      )
+        { error: "Analysis ID is required" },
+        { status: 400 },
+      );
     }
 
-    // Check if user is authenticated
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    let analysis
+    const sessionId = request.nextUrl.searchParams.get("sessionId");
+    let query = supabaseAdmin.from("analyses").select("*").eq("id", analysisId);
 
     if (user) {
-      // Authenticated user: check ownership by user_id
-      const { data, error } = await supabaseAdmin
-        .from('analyses')
-        .select('*')
-        .eq('id', analysisId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (error || !data) {
-        return NextResponse.json(
-          { error: 'Analysis not found or access denied' },
-          { status: 404 }
-        )
-      }
-
-      analysis = data
+      query = query.or(
+        `user_id.eq.${user.id},wallet_address.eq.${request.nextUrl.searchParams.get("walletAddress") ?? ""},session_id.eq.${sessionId ?? ""}`,
+      );
+    } else if (sessionId) {
+      query = query.eq("session_id", sessionId);
     } else {
-      // Anonymous user: check ownership by session_id from query params
-      const sessionId = request.nextUrl.searchParams.get('sessionId')
-      if (!sessionId) {
-        return NextResponse.json(
-          { error: 'Session ID required for anonymous access' },
-          { status: 401 }
-        )
-      }
-
-      const { data, error } = await supabaseAdmin
-        .from('analyses')
-        .select('*')
-        .eq('id', analysisId)
-        .eq('session_id', sessionId)
-        .single()
-
-      if (error || !data) {
-        return NextResponse.json(
-          { error: 'Analysis not found or access denied' },
-          { status: 404 }
-        )
-      }
-
-      analysis = data
+      return NextResponse.json(
+        { error: "Session ID required for anonymous access" },
+        { status: 401 },
+      );
     }
 
-    // Return analysis data (exclude premium content unless user has paid)
-    const response = {
-      id: analysis.id,
-      overallScore: analysis.overall_score,
-      symmetryScore: analysis.symmetry_score,
-      goldenRatioScore: analysis.golden_ratio_score,
-      boneStructureScore: analysis.bone_structure_score,
-      harmonyScore: analysis.harmony_score,
-      skinScore: analysis.skin_score,
-      dimorphismScore: analysis.dimorphism_score,
-      percentile: analysis.percentile,
-      category: analysis.category,
-      summary: analysis.summary,
-      strengths: analysis.strengths,
-      weakestDimension: analysis.weakest_dimension,
-      freeTip: analysis.free_tip,
-      premiumHook: analysis.premium_hook,
-      countryCode: analysis.country_code,
-      createdAt: analysis.created_at,
-      // Only include premium tips if user has paid (check payment status)
-      // For now, exclude premium content - will be added in Phase 5
-      // premiumTips: analysis.premium_tips
+    const { data, error } = await query.single();
+
+    if (error || !data) {
+      return NextResponse.json(
+        { error: "Analysis not found or access denied" },
+        { status: 404 },
+      );
     }
 
-    return NextResponse.json(response)
-
+    return NextResponse.json(toPublicAnalysis(data));
   } catch (error) {
-    console.error('Fetch analysis error:', error)
+    console.error("Fetch analysis error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

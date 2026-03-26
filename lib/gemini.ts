@@ -1,5 +1,11 @@
 import { getPromptForTier } from "./prompts";
-import type { AIAnalysisResult, AnalysisTier, ScoreCategory } from "@/types/ai";
+import type {
+  AIAnalysisResult,
+  AnalysisTier,
+  FaceArchetype,
+  ImprovementPrediction,
+  ScoreCategory,
+} from "@/types/ai";
 
 export interface GeminiAPIError {
   error: string;
@@ -12,33 +18,93 @@ export interface GeminiAPIResponse {
   error?: GeminiAPIError;
 }
 
+const SCORE_CATEGORIES: ScoreCategory[] = [
+  "Exceptional",
+  "Very Attractive",
+  "Above Average",
+  "Average",
+  "Below Average",
+];
+
+const FACE_ARCHETYPES: FaceArchetype[] = [
+  "Sharp",
+  "Balanced",
+  "Soft",
+  "Angular",
+  "Rounded",
+  "Defined",
+];
+
+const WEAKEST_DIMENSIONS = [
+  "Symmetry",
+  "Harmony",
+  "Proportionality",
+  "Averageness",
+  "Bone Structure",
+  "Skin Quality",
+  "Dimorphism",
+  "Neoteny",
+  "Adiposity",
+];
+
 function getAnalysisSchema(tier: AnalysisTier) {
   const properties = {
     overallScore: { type: "number" },
+    percentile: { type: "integer" },
+    category: { type: "string", enum: SCORE_CATEGORIES },
+    faceArchetype: { type: "string", enum: FACE_ARCHETYPES },
+    confidenceScore: { type: "number" },
     symmetryScore: { type: "integer" },
-    goldenRatioScore: { type: "integer" },
-    boneStructureScore: { type: "integer" },
     harmonyScore: { type: "integer" },
+    proportionalityScore: { type: "integer" },
+    averagenessScore: { type: "integer" },
+    boneStructureScore: { type: "integer" },
     skinScore: { type: "integer" },
     dimorphismScore: { type: "integer" },
-    percentile: { type: "integer" },
-    category: {
-      type: "string",
-      enum: [
-        "Exceptional",
-        "Very Attractive",
-        "Above Average",
-        "Average",
-        "Below Average",
-      ],
-    },
-    summary: { type: "string" },
+    neotenyScore: { type: "integer" },
+    adiposityScore: { type: "integer" },
+    executiveSummary: { type: "string" },
     strengths: { type: "array", items: { type: "string" } },
     weakestDimension: { type: "string" },
     freeTip: { type: "string" },
-    premiumHook: { type: "string" },
-    ...(tier === "premium"
-      ? { premiumTips: { type: "array", items: { type: "string" } } }
+    ...(tier !== "free"
+      ? {
+          weaknesses: { type: "array", items: { type: "string" } },
+          tradeoffs: { type: "array", items: { type: "string" } },
+          premiumTips: { type: "array", items: { type: "string" } },
+          citations: { type: "array", items: { type: "string" } },
+        }
+      : {}),
+    ...(tier === "elite"
+      ? {
+          improvementPredictions: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: [
+                "change",
+                "deltaScore",
+                "affectedDimensions",
+                "timeframe",
+                "difficulty",
+              ],
+              properties: {
+                change: { type: "string" },
+                deltaScore: { type: "number" },
+                affectedDimensions: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                timeframe: { type: "string" },
+                difficulty: {
+                  type: "string",
+                  enum: ["easy", "medium", "hard"],
+                },
+              },
+            },
+          },
+        }
       : {}),
   };
 
@@ -71,25 +137,49 @@ function extractOutputText(payload: unknown): string | null {
   return null;
 }
 
+function validateIntegerScore(score: number): boolean {
+  return Number.isInteger(score) && score >= 1 && score <= 100;
+}
+
+function validateImprovementPredictions(
+  predictions: ImprovementPrediction[] | undefined,
+) {
+  if (!predictions) return true;
+
+  return predictions.every((prediction) => {
+    return (
+      typeof prediction.change === "string" &&
+      typeof prediction.deltaScore === "number" &&
+      Array.isArray(prediction.affectedDimensions) &&
+      typeof prediction.timeframe === "string" &&
+      ["easy", "medium", "hard"].includes(prediction.difficulty)
+    );
+  });
+}
+
 function validateAnalysisResult(
   parsed: AIAnalysisResult,
   tier: AnalysisTier,
 ): GeminiAPIResponse {
   const requiredFields = [
     "overallScore",
-    "symmetryScore",
-    "goldenRatioScore",
-    "boneStructureScore",
-    "harmonyScore",
-    "skinScore",
-    "dimorphismScore",
     "percentile",
     "category",
-    "summary",
+    "faceArchetype",
+    "confidenceScore",
+    "symmetryScore",
+    "harmonyScore",
+    "proportionalityScore",
+    "averagenessScore",
+    "boneStructureScore",
+    "skinScore",
+    "dimorphismScore",
+    "neotenyScore",
+    "adiposityScore",
+    "executiveSummary",
     "strengths",
     "weakestDimension",
     "freeTip",
-    "premiumHook",
   ] as const;
 
   const missingFields = requiredFields.filter((field) => !(field in parsed));
@@ -109,96 +199,142 @@ function validateAnalysisResult(
     };
   }
 
+  if (parsed.percentile < 1 || parsed.percentile > 99) {
+    return {
+      success: false,
+      error: { error: "percentile must be an integer between 1 and 99" },
+    };
+  }
+
+  if (!SCORE_CATEGORIES.includes(parsed.category)) {
+    return {
+      success: false,
+      error: { error: "Invalid category returned by Gemini" },
+    };
+  }
+
+  if (!FACE_ARCHETYPES.includes(parsed.faceArchetype)) {
+    return {
+      success: false,
+      error: { error: "Invalid faceArchetype returned by Gemini" },
+    };
+  }
+
+  if (parsed.confidenceScore < 0 || parsed.confidenceScore > 1) {
+    return {
+      success: false,
+      error: { error: "confidenceScore must be between 0 and 1" },
+    };
+  }
+
   const dimensionScores = [
     parsed.symmetryScore,
-    parsed.goldenRatioScore,
-    parsed.boneStructureScore,
     parsed.harmonyScore,
+    parsed.proportionalityScore,
+    parsed.averagenessScore,
+    parsed.boneStructureScore,
     parsed.skinScore,
     parsed.dimorphismScore,
+    parsed.neotenyScore,
+    parsed.adiposityScore,
   ];
 
-  for (const score of dimensionScores) {
-    if (score < 1 || score > 100 || !Number.isInteger(score)) {
+  if (!dimensionScores.every(validateIntegerScore)) {
+    return {
+      success: false,
+      error: {
+        error: "All dimension scores must be integers between 1 and 100",
+      },
+    };
+  }
+
+  if (!WEAKEST_DIMENSIONS.includes(parsed.weakestDimension)) {
+    return {
+      success: false,
+      error: {
+        error: `weakestDimension must be one of: ${WEAKEST_DIMENSIONS.join(", ")}`,
+      },
+    };
+  }
+
+  const strengthCount = parsed.strengths.length;
+  if (
+    !Array.isArray(parsed.strengths) ||
+    strengthCount < 3 ||
+    (tier === "free" ? strengthCount !== 3 : strengthCount > 7)
+  ) {
+    return {
+      success: false,
+      error: { error: "Unexpected strengths count for tier" },
+    };
+  }
+
+  if (tier === "free") {
+    return {
+      success: true,
+      result: {
+        ...parsed,
+        weaknesses: [],
+        tradeoffs: [],
+        premiumTips: [],
+        citations: [],
+        improvementPredictions: [],
+      },
+    };
+  }
+
+  if (
+    !Array.isArray(parsed.weaknesses) ||
+    parsed.weaknesses.length < 3 ||
+    parsed.weaknesses.length > 5
+  ) {
+    return {
+      success: false,
+      error: { error: "Premium and elite tiers require 3-5 weaknesses" },
+    };
+  }
+
+  if (!Array.isArray(parsed.tradeoffs)) {
+    return {
+      success: false,
+      error: { error: "tradeoffs must be an array" },
+    };
+  }
+
+  if (!Array.isArray(parsed.premiumTips) || parsed.premiumTips.length !== 20) {
+    return {
+      success: false,
+      error: { error: "premiumTips must contain exactly 20 items" },
+    };
+  }
+
+  if (!Array.isArray(parsed.citations) || parsed.citations.length === 0) {
+    return {
+      success: false,
+      error: { error: "Premium and elite tiers require citations" },
+    };
+  }
+
+  if (tier === "elite") {
+    if (
+      !Array.isArray(parsed.improvementPredictions) ||
+      parsed.improvementPredictions.length < 4 ||
+      parsed.improvementPredictions.length > 6 ||
+      !validateImprovementPredictions(parsed.improvementPredictions)
+    ) {
       return {
         success: false,
-        error: {
-          error: "Dimension scores must be integers between 1 and 100",
-        },
+        error: { error: "Elite tier requires 4-6 valid improvementPredictions" },
       };
     }
-  }
-
-  if (
-    parsed.percentile < 1 ||
-    parsed.percentile > 99 ||
-    !Number.isInteger(parsed.percentile)
-  ) {
-    return {
-      success: false,
-      error: {
-        error: "percentile must be an integer between 1 and 99",
-      },
-    };
-  }
-
-  const validCategories: ScoreCategory[] = [
-    "Exceptional",
-    "Very Attractive",
-    "Above Average",
-    "Average",
-    "Below Average",
-  ];
-
-  if (!validCategories.includes(parsed.category)) {
-    return {
-      success: false,
-      error: {
-        error: `Invalid category. Must be one of: ${validCategories.join(", ")}`,
-      },
-    };
-  }
-
-  const validWeakestDimensions = [
-    "Symmetry",
-    "Golden Ratio",
-    "Bone Structure",
-    "Harmony",
-    "Skin Quality",
-    "Dimorphism",
-  ];
-
-  if (!validWeakestDimensions.includes(parsed.weakestDimension)) {
-    return {
-      success: false,
-      error: {
-        error: `weakestDimension must be one of: ${validWeakestDimensions.join(", ")}`,
-      },
-    };
-  }
-
-  if (!Array.isArray(parsed.strengths) || parsed.strengths.length < 3) {
-    return {
-      success: false,
-      error: { error: "strengths must contain at least 3 items" },
-    };
-  }
-
-  if (
-    tier === "premium" &&
-    (!Array.isArray(parsed.premiumTips) || parsed.premiumTips.length !== 20)
-  ) {
-    return {
-      success: false,
-      error: { error: "Premium tier must include exactly 20 premiumTips" },
-    };
   }
 
   return {
     success: true,
     result: {
       ...parsed,
-      premiumTips: tier === "premium" ? parsed.premiumTips : undefined,
+      improvementPredictions:
+        parsed.improvementPredictions ?? [],
     },
   };
 }
@@ -254,7 +390,7 @@ export async function analyseWithGemini(
             responseMimeType: "application/json",
             responseJsonSchema: getAnalysisSchema(tier),
             temperature: 0.2,
-            maxOutputTokens: 1800,
+            maxOutputTokens: tier === "elite" ? 2600 : 2200,
           },
         }),
       },
