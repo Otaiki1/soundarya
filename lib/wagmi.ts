@@ -5,6 +5,7 @@ import {
     injectedWallet,
     walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
+import { SOUNDARYA_RPC_URL } from "@/lib/contracts";
 
 const walletConnectProjectId =
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -43,8 +44,8 @@ export const config = createConfig({
     connectors,
     multiInjectedProviderDiscovery: false,
     transports: {
-        [base.id]: http(),
-        [baseSepolia.id]: http(),
+        [base.id]: http(SOUNDARYA_RPC_URL),
+        [baseSepolia.id]: http(SOUNDARYA_RPC_URL),
     },
     ssr: true,
 });

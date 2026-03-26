@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
             to: walletAddress,
             score: Math.floor(analysisData.overall_score * 10).toString(),
             dim0: Math.floor(analysisData.symmetry_score * 10).toString(),
-            dim1: Math.floor(analysisData.golden_ratio_score * 10).toString(),
+            dim1: Math.floor(analysisData.proportionality_score * 10).toString(),
             dim2: Math.floor(analysisData.bone_structure_score * 10).toString(),
             dim3: Math.floor(analysisData.harmony_score * 10).toString(),
             dim4: Math.floor(analysisData.skin_score * 10).toString(),

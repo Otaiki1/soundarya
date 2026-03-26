@@ -22,12 +22,12 @@ export async function GET(
           category,
           country_code,
           symmetry_score,
-          golden_ratio_score,
+          proportionality_score,
           bone_structure_score,
           percentile
         ),
         profiles!challenges_challenger_id_fkey(
-          display_name
+          username
         )
       `,
             )
@@ -50,10 +50,11 @@ export async function GET(
             category: analysis.category,
             countryCode: analysis.country_code,
             symmetry: analysis.symmetry_score,
-            goldenRatio: analysis.golden_ratio_score,
+            goldenRatio: analysis.proportionality_score,
+            proportionality: analysis.proportionality_score,
             boneStructure: analysis.bone_structure_score,
             percentile: analysis.percentile,
-            displayName: profile?.display_name || "Anonymous",
+            displayName: profile?.username || "Anonymous",
         });
     } catch (error) {
         console.error("Challenge fetch error:", error);
