@@ -1,37 +1,113 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useEffect, useRef, useState } from "react";
+import { type Hex, zeroAddress } from "viem";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import {
+  SOUNDARYA_CHAIN_ID,
+  SOUNDARYA_SCORE_ABI,
+  SOUNDARYA_SCORE_ADDRESS,
+} from "@/lib/contracts";
 import { getStoredScans, removeStoredScans } from "@/lib/scans";
 
 export function ClaimScans() {
   const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient({ chainId: SOUNDARYA_CHAIN_ID });
+  const { writeContractAsync } = useWriteContract();
   const [message, setMessage] = useState<string | null>(null);
+  const attemptedWalletRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isConnected || !address) return;
+    if (!isConnected || !address || !publicClient) return;
+    if (attemptedWalletRef.current === address.toLowerCase()) return;
+
     const scans = getStoredScans();
     if (!scans.length) return;
+    attemptedWalletRef.current = address.toLowerCase();
 
     void (async () => {
-      const response = await fetch("/api/onchain/claim-scans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: address,
-          scanHashes: scans.map((scan) => scan.scanHash),
-        }),
-      });
+      try {
+        const response = await fetch("/api/onchain/claim-scans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: address,
+            scanHashes: scans.map((scan) => scan.scanHash),
+          }),
+        });
 
-      if (!response.ok) return;
-      const data = await response.json();
-      if (data.linkedCount > 0) {
-        removeStoredScans(data.claimedScanHashes || scans.map((scan) => scan.scanHash));
-        setMessage(`${data.linkedCount} previous scans linked to your wallet`);
-        window.setTimeout(() => setMessage(null), 3000);
+        if (!response.ok) return;
+        const data = await response.json();
+        const linkedHashes = (
+          Array.isArray(data.claimedScanHashes)
+            ? data.claimedScanHashes
+            : scans.map((scan) => scan.scanHash)
+        ) as Hex[];
+
+        const claimedOnchain: Hex[] = [];
+
+        for (const scanHash of linkedHashes) {
+          const [isAttested, mappedWallet] = await Promise.all([
+            publicClient.readContract({
+              address: SOUNDARYA_SCORE_ADDRESS,
+              abi: SOUNDARYA_SCORE_ABI,
+              functionName: "scanAttested",
+              args: [scanHash],
+            }),
+            publicClient.readContract({
+              address: SOUNDARYA_SCORE_ADDRESS,
+              abi: SOUNDARYA_SCORE_ABI,
+              functionName: "scanToWallet",
+              args: [scanHash],
+            }),
+          ]);
+
+          if (!isAttested) {
+            continue;
+          }
+
+          if (
+            typeof mappedWallet === "string" &&
+            mappedWallet !== zeroAddress
+          ) {
+            if (mappedWallet.toLowerCase() === address.toLowerCase()) {
+              claimedOnchain.push(scanHash);
+            }
+            continue;
+          }
+
+          try {
+            const txHash = await writeContractAsync({
+              address: SOUNDARYA_SCORE_ADDRESS,
+              abi: SOUNDARYA_SCORE_ABI,
+              functionName: "claimScan",
+              args: [scanHash],
+            });
+
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+            claimedOnchain.push(scanHash);
+          } catch (claimError) {
+            console.warn("Onchain scan claim skipped:", claimError);
+          }
+        }
+
+        if (claimedOnchain.length > 0) {
+          removeStoredScans(claimedOnchain);
+        }
+
+        if (data.linkedCount > 0) {
+          const onchainSummary =
+            claimedOnchain.length > 0
+              ? ` · ${claimedOnchain.length} claimed onchain`
+              : "";
+          setMessage(`${data.linkedCount} previous scans linked${onchainSummary}`);
+          window.setTimeout(() => setMessage(null), 4000);
+        }
+      } catch (error) {
+        console.warn("Claim scan sync failed:", error);
       }
     })();
-  }, [address, isConnected]);
+  }, [address, isConnected, publicClient, writeContractAsync]);
 
   if (!message) return null;
 
