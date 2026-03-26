@@ -1,40 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
-    const address = searchParams.get("address");
+  const address = request.nextUrl.searchParams.get("address");
 
-    if (!address) {
-        return NextResponse.json({ error: "Missing address" }, { status: 400 });
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let profile = null;
+    if (user?.id) {
+      const result = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      profile = result.data;
     }
 
-    try {
-        // Find profile by wallet address
-        // Note: Assuming we have a way to link wallet to profile. 
-        // For now, let's search analyses by user_id if we can map address -> user_id, 
-        // or just search analyses by a session if needed.
-        // BUT for a real profile, we'd want a wallet_address field in profiles.
-        
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from("profiles")
-            .select("*")
-            .eq("id", address) // Or map address to UUID if using Supabase Auth with Web3
-            .single();
-
-        // Let's also fetch analyses for this "user" (using address as placeholder for user_id)
-        const { data: analyses, error: analysesError } = await supabaseAdmin
-            .from("analyses")
-            .select("*")
-            .eq("user_id", address)
-            .order("created_at", { ascending: false });
-
-        return NextResponse.json({
-            profile: profile || { id: address, subscription_tier: "free" },
-            analyses: analyses || [],
-        });
-    } catch (error) {
-        console.error("Profile fetch error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (!profile && address) {
+      const result = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("wallet_address", address.toLowerCase())
+        .maybeSingle();
+      profile = result.data;
     }
+
+    const queries = [];
+    if (user?.id) {
+      queries.push(
+        supabaseAdmin
+          .from("analyses")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      );
+    }
+    if (address) {
+      queries.push(
+        supabaseAdmin
+          .from("analyses")
+          .select("*")
+          .eq("wallet_address", address.toLowerCase())
+          .order("created_at", { ascending: false }),
+      );
+    }
+
+    const results = await Promise.all(queries);
+    const analysisMap = new Map<string, any>();
+    for (const result of results) {
+      for (const analysis of result.data ?? []) {
+        analysisMap.set(analysis.id, analysis);
+      }
+    }
+
+    const { data: nftMints } = address
+      ? await supabaseAdmin
+          .from("nft_mints")
+          .select("*")
+          .eq("wallet_address", address.toLowerCase())
+          .order("minted_at", { ascending: false })
+      : { data: [] };
+
+    return NextResponse.json({
+      profile: profile || null,
+      analyses: Array.from(analysisMap.values()).sort((a, b) => {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }),
+      nftMints: nftMints || [],
+    });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

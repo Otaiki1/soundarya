@@ -128,7 +128,7 @@ function LoadingStages({ currentStage }: { currentStage: LoadingStage }) {
   const stages: { key: LoadingStage; label: string; icon: string }[] = [
     { key: 'detecting', label: 'Detecting facial features', icon: '🔍' },
     { key: 'symmetry', label: 'Analyzing symmetry', icon: '⚖️' },
-    { key: 'ratio', label: 'Measuring golden ratio', icon: '📐' },
+    { key: 'ratio', label: 'Measuring proportionality', icon: '📐' },
     { key: 'structure', label: 'Evaluating bone structure', icon: '🦴' },
     { key: 'writing', label: 'Writing your analysis', icon: '✍️' }
   ]

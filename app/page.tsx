@@ -24,9 +24,9 @@ const processSteps = [
     },
     {
         number: "02",
-        label: "AI scoring · 7 dimensions · Golden ratio",
+        label: "AI scoring · 9 dimensions · Proportionality",
         title: "The analysis runs",
-        body: "Soundarya maps 68 facial landmarks and scores seven distinct dimensions — symmetry, proportion, harmony, bone structure, skin quality, dimorphism, and averageness — against the established science of facial attractiveness. The result takes under a minute.",
+        body: "Soundarya maps 68 facial landmarks and scores nine distinct dimensions — symmetry, harmony, proportionality, averageness, bone structure, skin quality, dimorphism, neoteny, and adiposity — against the established science of facial attractiveness. The result takes under a minute.",
     },
     {
         number: "03",
@@ -112,7 +112,7 @@ const plans = [
         description:
             "The complete picture. Every dimension explained, every weakness identified, every observation made actionable. This is the report worth owning.",
         features: [
-            "Full 7-dimension breakdown",
+            "Full 9-dimension breakdown",
             "Detailed strengths and weak points",
             "20 personalised improvement observations",
             "Skincare and grooming guidance",
@@ -622,7 +622,7 @@ export default function Home() {
                             <SectionHeader
                                 label="Progress tracking"
                                 title="Beauty is not static. Your score shouldn't be either."
-                                body="Seven days after your last paid analysis, Soundarya unlocks a rescan. Same seven dimensions, same scientific framework, new portrait. If your score improves — better sleep, a new skincare routine, changed lighting, actual physical change — it shows up in the reading."
+                                body="Seven days after your last paid analysis, Soundarya unlocks a rescan. Same nine dimensions, same scientific framework, new portrait. If your score improves — better sleep, a new skincare routine, changed lighting, actual physical change — it shows up in the reading."
                             />
                             <p className="mt-6 max-w-xl text-[1rem] leading-8 text-soft/80">
                                 Mint your new score. Submit it to the leaderboard.
@@ -666,7 +666,7 @@ export default function Home() {
                     <SectionHeader
                         label="Access"
                         title="Choose the depth of your reading."
-                        body="All tiers use the same AI, the same seven dimensions, and the same scoring model. What changes is how deep the report goes — and what you can do with the result."
+                        body="All tiers use the same AI, the same nine dimensions, and the same scoring model. What changes is how deep the report goes — and what you can do with the result."
                     />
 
                     <div className="mt-14 grid gap-6 xl:grid-cols-3">
@@ -738,7 +738,7 @@ export default function Home() {
                         Want to own your result onchain?
                         <br />
                         Add an NFT mint for 0.001 ETH — roughly $2–3 at current
-                        ETH price. Your score, all seven dimensions, and your
+                        ETH price. Your score, all nine dimensions, and your
                         percentile are written permanently to Base. Required for
                         leaderboard entry.
                     </div>

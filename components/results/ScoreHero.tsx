@@ -17,8 +17,13 @@ export function ScoreHero({ analysis }: ScoreHeroProps) {
                 <div className="text-[11px] text-muted tracking-[0.2em] uppercase mb-6 opacity-70">
                     out of 10
                 </div>
-                <div className="inline-flex items-center px-5 py-2 border border-gold/20 text-[10px] tracking-[0.2em] uppercase text-gold bg-gold/5 rounded-sm">
-                    {analysis.category}
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                    <div className="inline-flex items-center px-5 py-2 border border-gold/20 text-[10px] tracking-[0.2em] uppercase text-gold bg-gold/5 rounded-sm">
+                        {analysis.category}
+                    </div>
+                    <div className="inline-flex items-center px-5 py-2 border border-white/10 text-[10px] tracking-[0.2em] uppercase text-soft rounded-sm">
+                        Archetype · {analysis.faceArchetype}
+                    </div>
                 </div>
             </div>
 
@@ -34,8 +39,13 @@ export function ScoreHero({ analysis }: ScoreHeroProps) {
 
             <div className="max-w-3xl mx-auto border-t border-white/5 pt-6 sm:pt-8">
                 <p className="text-sm sm:text-base leading-relaxed text-soft tracking-wide font-light italic">
-                    "{analysis.summary}"
+                    "{analysis.executiveSummary}"
                 </p>
+                {analysis.confidenceScore < 0.5 ? (
+                    <p className="mt-4 text-xs uppercase tracking-[0.18em] text-amber-300">
+                        Confidence warning · Image quality reduced certainty
+                    </p>
+                ) : null}
             </div>
         </div>
     );

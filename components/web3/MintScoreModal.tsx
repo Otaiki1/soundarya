@@ -396,7 +396,7 @@ export function MintScoreModal({
 
                             <div className="flex flex-col w-full gap-2">
                                 <a
-                                    href={`https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS}`}
+                                    href={`https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_SCORE_NFT_ADDRESS || process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-full bg-gold text-surface font-serif py-3 px-4 rounded-sm hover:bg-gold/90 transition-all text-center text-sm"

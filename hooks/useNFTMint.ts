@@ -126,7 +126,8 @@ export function useNFTMint(analysisId: string) {
                             stateMutability: "payable",
                         } as const,
                     ],
-                    address: (process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS ||
+                    address: (process.env.NEXT_PUBLIC_SCORE_NFT_ADDRESS ||
+                        process.env.NEXT_PUBLIC_SOUNDARYA_NFT_ADDRESS ||
                         "") as `0x${string}`,
                     functionName: "mintScore",
                     args: [contractScoreData, signature as `0x${string}`],

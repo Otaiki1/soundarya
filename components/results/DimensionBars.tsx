@@ -35,11 +35,14 @@ interface DimensionBarsProps {
 export function DimensionBars({ analysis }: DimensionBarsProps) {
     const dimensions = [
         { label: "Symmetry", score: analysis.symmetryScore },
-        { label: "Golden Ratio", score: analysis.goldenRatioScore },
-        { label: "Bone Structure", score: analysis.boneStructureScore },
         { label: "Harmony", score: analysis.harmonyScore },
+        { label: "Proportionality", score: analysis.proportionalityScore },
+        { label: "Averageness", score: analysis.averagenessScore },
+        { label: "Bone Structure", score: analysis.boneStructureScore },
         { label: "Skin Quality", score: analysis.skinScore },
         { label: "Dimorphism", score: analysis.dimorphismScore },
+        { label: "Neoteny", score: analysis.neotenyScore },
+        { label: "Adiposity", score: analysis.adiposityScore },
     ];
 
     return (
