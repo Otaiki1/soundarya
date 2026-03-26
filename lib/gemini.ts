@@ -230,6 +230,17 @@ function normalizeDimensionLabel(value: string): string {
   return value;
 }
 
+function sanitizeStringArray(value: unknown, maxItems?: number): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const cleaned = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return typeof maxItems === "number" ? cleaned.slice(0, maxItems) : cleaned;
+}
+
 function inferWeakestDimension(parsed: AIAnalysisResult): string {
   const dimensions = [
     { label: "Symmetry", score: parsed.symmetryScore },
@@ -256,20 +267,27 @@ function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
 
   return {
     ...parsed,
+    strengths: sanitizeStringArray(parsed.strengths, 7),
+    weaknesses: sanitizeStringArray(parsed.weaknesses, 5),
+    tradeoffs: sanitizeStringArray(parsed.tradeoffs, 8),
+    premiumTips: sanitizeStringArray(parsed.premiumTips, 20),
+    citations: sanitizeStringArray(parsed.citations, 20),
     weakestDimension:
       typeof normalizedWeakest === "string" &&
       WEAKEST_DIMENSIONS.includes(normalizedWeakest)
         ? normalizedWeakest
         : inferWeakestDimension(parsed),
     improvementPredictions: Array.isArray(parsed.improvementPredictions)
-      ? parsed.improvementPredictions.map((prediction) => ({
+      ? parsed.improvementPredictions.slice(0, 6).map((prediction) => ({
           ...prediction,
           affectedDimensions: Array.isArray(prediction.affectedDimensions)
-            ? prediction.affectedDimensions.map((dimension) =>
+            ? prediction.affectedDimensions
+                .map((dimension) =>
                 typeof dimension === "string"
                   ? normalizeDimensionLabel(dimension)
                   : dimension,
               )
+                .filter((dimension): dimension is string => typeof dimension === "string")
             : prediction.affectedDimensions,
         }))
       : parsed.improvementPredictions,
@@ -394,15 +412,21 @@ function validateAnalysisResult(
     };
   }
 
-  const strengthCount = normalized.strengths.length;
-  if (
-    !Array.isArray(normalized.strengths) ||
-    strengthCount < 3 ||
-    (tier === "free" ? strengthCount !== 3 : strengthCount > 7)
-  ) {
+  const normalizedStrengths =
+    tier === "free"
+      ? normalized.strengths.slice(0, 3)
+      : normalized.strengths.slice(0, 7);
+  const normalizedWeaknesses = normalized.weaknesses ?? [];
+  const normalizedTradeoffs = normalized.tradeoffs ?? [];
+  const normalizedPremiumTips = normalized.premiumTips ?? [];
+  const normalizedCitations = normalized.citations ?? [];
+  const normalizedImprovementPredictions =
+    normalized.improvementPredictions ?? [];
+
+  if (normalizedStrengths.length === 0) {
     return {
       success: false,
-      error: { error: "Unexpected strengths count for tier" },
+      error: { error: "At least one strength is required" },
     };
   }
 
@@ -411,6 +435,7 @@ function validateAnalysisResult(
         success: true,
         result: {
         ...normalized,
+        strengths: normalizedStrengths,
         weaknesses: [],
         tradeoffs: [],
         premiumTips: [],
@@ -421,31 +446,22 @@ function validateAnalysisResult(
   }
 
   if (
-    !Array.isArray(normalized.weaknesses) ||
-    normalized.weaknesses.length < 3 ||
-    normalized.weaknesses.length > 5
+    normalizedWeaknesses.length === 0
   ) {
     return {
       success: false,
-      error: { error: "Premium and elite tiers require 3-5 weaknesses" },
+      error: { error: "Premium and elite tiers require at least one weakness" },
     };
   }
 
-  if (!Array.isArray(normalized.tradeoffs)) {
+  if (normalizedPremiumTips.length === 0) {
     return {
       success: false,
-      error: { error: "tradeoffs must be an array" },
+      error: { error: "At least one premium tip is required" },
     };
   }
 
-  if (!Array.isArray(normalized.premiumTips) || normalized.premiumTips.length !== 20) {
-    return {
-      success: false,
-      error: { error: "premiumTips must contain exactly 20 items" },
-    };
-  }
-
-  if (!Array.isArray(normalized.citations) || normalized.citations.length === 0) {
+  if (normalizedCitations.length === 0) {
     return {
       success: false,
       error: { error: "Premium and elite tiers require citations" },
@@ -454,14 +470,12 @@ function validateAnalysisResult(
 
   if (tier === "elite") {
     if (
-      !Array.isArray(normalized.improvementPredictions) ||
-      normalized.improvementPredictions.length < 4 ||
-      normalized.improvementPredictions.length > 6 ||
-      !validateImprovementPredictions(normalized.improvementPredictions)
+      normalizedImprovementPredictions.length === 0 ||
+      !validateImprovementPredictions(normalizedImprovementPredictions)
     ) {
       return {
         success: false,
-        error: { error: "Elite tier requires 4-6 valid improvementPredictions" },
+        error: { error: "Elite tier requires improvement predictions" },
       };
     }
   }
@@ -470,8 +484,12 @@ function validateAnalysisResult(
     success: true,
     result: {
       ...normalized,
-      improvementPredictions:
-        normalized.improvementPredictions ?? [],
+      strengths: normalizedStrengths,
+      weaknesses: normalizedWeaknesses,
+      tradeoffs: normalizedTradeoffs,
+      premiumTips: normalizedPremiumTips,
+      citations: normalizedCitations,
+      improvementPredictions: normalizedImprovementPredictions,
     },
   };
 }
