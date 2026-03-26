@@ -137,6 +137,47 @@ function extractOutputText(payload: unknown): string | null {
   return null;
 }
 
+function extractJsonCandidate(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    return fenceMatch[1].trim();
+  }
+
+  const firstObject = trimmed.indexOf("{");
+  const lastObject = trimmed.lastIndexOf("}");
+  if (firstObject !== -1 && lastObject !== -1 && lastObject > firstObject) {
+    return trimmed.slice(firstObject, lastObject + 1);
+  }
+
+  const firstArray = trimmed.indexOf("[");
+  const lastArray = trimmed.lastIndexOf("]");
+  if (firstArray !== -1 && lastArray !== -1 && lastArray > firstArray) {
+    return trimmed.slice(firstArray, lastArray + 1);
+  }
+
+  return trimmed;
+}
+
+function tryParseJson(text: string): AIAnalysisResult | null {
+  const candidates = [
+    text,
+    extractJsonCandidate(text),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as AIAnalysisResult;
+    } catch {
+      // Continue to the next candidate.
+    }
+  }
+
+  return null;
+}
+
 function validateIntegerScore(score: number): boolean {
   return Number.isInteger(score) && score >= 1 && score <= 100;
 }
@@ -422,11 +463,10 @@ export async function analyseWithGemini(
       };
     }
 
-    let parsed: AIAnalysisResult;
+    const parsed = tryParseJson(outputText);
 
-    try {
-      parsed = JSON.parse(outputText) as AIAnalysisResult;
-    } catch {
+    if (!parsed) {
+      console.error("Gemini JSON parse failure. Raw output:", outputText);
       return {
         success: false,
         error: { error: "Failed to parse Gemini response as JSON" },
