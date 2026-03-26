@@ -42,10 +42,16 @@ export async function POST(request: NextRequest) {
 
     const country = await getCountryFromIP(clientIP);
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    let userId: string | undefined;
+    try {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      userId = user?.id;
+    } catch (authError) {
+      console.warn("Analysis auth lookup skipped:", authError);
+    }
 
     const result = await createStoredAnalysis({
       photo,
@@ -53,15 +59,17 @@ export async function POST(request: NextRequest) {
       ipHash,
       countryCode: country.countryCode,
       countryName: country.countryName,
-      userId: user?.id,
+      userId,
       tier: "free",
     });
 
     return NextResponse.json(result);
   } catch (error) {
     console.error("Analysis endpoint error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: message },
       { status: 500 },
     );
   }
