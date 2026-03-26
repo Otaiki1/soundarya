@@ -215,20 +215,52 @@ function normalizeDimensionLabel(value: string): string {
     .replace(/\s+/g, " ");
 
   const compact = normalized.replace(/\s+/g, "");
-  return (
+  const direct =
     DIMENSION_ALIASES[normalized] ??
-    DIMENSION_ALIASES[compact] ??
-    value
-  );
+    DIMENSION_ALIASES[compact];
+
+  if (direct) return direct;
+
+  for (const [alias, canonical] of Object.entries(DIMENSION_ALIASES)) {
+    if (normalized.includes(alias) || compact.includes(alias.replace(/\s+/g, ""))) {
+      return canonical;
+    }
+  }
+
+  return value;
+}
+
+function inferWeakestDimension(parsed: AIAnalysisResult): string {
+  const dimensions = [
+    { label: "Symmetry", score: parsed.symmetryScore },
+    { label: "Harmony", score: parsed.harmonyScore },
+    { label: "Proportionality", score: parsed.proportionalityScore },
+    { label: "Averageness", score: parsed.averagenessScore },
+    { label: "Bone Structure", score: parsed.boneStructureScore },
+    { label: "Skin Quality", score: parsed.skinScore },
+    { label: "Dimorphism", score: parsed.dimorphismScore },
+    { label: "Neoteny", score: parsed.neotenyScore },
+    { label: "Adiposity", score: parsed.adiposityScore },
+  ];
+
+  return dimensions.reduce((lowest, current) =>
+    current.score < lowest.score ? current : lowest,
+  ).label;
 }
 
 function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
+  const normalizedWeakest =
+    typeof parsed.weakestDimension === "string"
+      ? normalizeDimensionLabel(parsed.weakestDimension)
+      : parsed.weakestDimension;
+
   return {
     ...parsed,
     weakestDimension:
-      typeof parsed.weakestDimension === "string"
-        ? normalizeDimensionLabel(parsed.weakestDimension)
-        : parsed.weakestDimension,
+      typeof normalizedWeakest === "string" &&
+      WEAKEST_DIMENSIONS.includes(normalizedWeakest)
+        ? normalizedWeakest
+        : inferWeakestDimension(parsed),
     improvementPredictions: Array.isArray(parsed.improvementPredictions)
       ? parsed.improvementPredictions.map((prediction) => ({
           ...prediction,
