@@ -105,7 +105,7 @@ export default function LeaderboardPage() {
         </div>
         
         <div className="mt-10 text-center">
-          <p className="text-[10px] tracking-[0.2em] text-muted uppercase opacity-50">
+          <p className="text-[10px] tracking-[0.2em] text-muted uppercase">
             Updated in real-time on Base • Top 10 displayed
           </p>
         </div>

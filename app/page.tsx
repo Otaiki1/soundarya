@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Navbar } from "@/components/ui/Navbar";
+import { DowntimeModal } from "@/components/ui/DowntimeModal";
 import { AnalysisModal } from "@/components/upload/AnalysisModal";
 import { storeScanRecord } from "@/lib/scans";
 import { getOrCreateSessionId } from "@/lib/session";
@@ -20,13 +21,13 @@ const processSteps = [
         number: "01",
         label: "Natural light · Front-facing · No filters",
         title: "Frame your portrait",
-        body: "One clear photograph is all Soundarya needs. No studio setup, no specialist equipment. Natural light, calm expression, facing the camera directly. The cleaner the photo, the more precise the reading.",
+        body: "One clear photograph is all Uzoza needs. No studio setup, no specialist equipment. Natural light, calm expression, facing the camera directly. The cleaner the photo, the more precise the reading.",
     },
     {
         number: "02",
         label: "AI scoring · 9 dimensions · Proportionality",
         title: "The analysis runs",
-        body: "Soundarya maps 68 facial landmarks and scores nine distinct dimensions — symmetry, harmony, proportionality, averageness, bone structure, skin quality, dimorphism, neoteny, and adiposity — against the established science of facial attractiveness. The result takes under a minute.",
+        body: "Uzoza maps 68 facial landmarks and scores nine distinct dimensions — symmetry, harmony, proportionality, averageness, bone structure, skin quality, dimorphism, neoteny, and adiposity — against the established science of facial attractiveness. The result takes under a minute.",
     },
     {
         number: "03",
@@ -78,7 +79,7 @@ const onchainBenefits = [
     },
     {
         title: "✦ Compete with real credentials",
-        body: "The Soundarya leaderboard only accepts minted scores. Your NFT is your entry ticket — and the proof that your ranking is legitimate.",
+        body: "The Uzoza leaderboard only accepts minted scores. Your NFT is your entry ticket — and the proof that your ranking is legitimate.",
     },
 ];
 
@@ -178,7 +179,7 @@ function SectionHeader({
                 {title}
             </h2>
             {body ? (
-                <p className="mt-5 max-w-2xl text-[1rem] leading-8 text-soft/80">
+                <p className="mt-5 max-w-2xl text-[1rem] leading-8 text-soft">
                     {body}
                 </p>
             ) : null}
@@ -192,6 +193,7 @@ export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [activeHeroImage, setActiveHeroImage] = useState(0);
+    const [downtimeOpen, setDowntimeOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -223,14 +225,26 @@ export default function Home() {
 
             if (!response.ok) {
                 let message = "Analysis failed";
+                let errorCode = "";
                 try {
                     const errorData = await response.json();
                     if (typeof errorData?.error === "string") {
                         message = errorData.error;
                     }
+                    if (typeof errorData?.code === "string") {
+                        errorCode = errorData.code;
+                    }
                 } catch {
                     // Ignore JSON parse errors and keep the fallback message.
                 }
+
+                if (response.status === 503 || errorCode === "ORACLE_UNAVAILABLE") {
+                    setIsModalOpen(false);
+                    setUploadedFile(null);
+                    setDowntimeOpen(true);
+                    return;
+                }
+
                 throw new Error(message);
             }
 
@@ -276,8 +290,8 @@ export default function Home() {
                         <p className="mt-6 font-serif text-[clamp(1.65rem,3vw,2.4rem)] italic leading-tight text-gold-bright">
                             Now you can own yours — permanently.
                         </p>
-                        <p className="mt-8 max-w-2xl text-[1.03rem] leading-8 text-soft/82">
-                            Soundarya is the only beauty analysis platform that
+                        <p className="mt-8 max-w-2xl text-[1.03rem] leading-8 text-soft">
+                            Uzoza is the only beauty analysis platform that
                             turns a single portrait into a structured, scientific
                             reading — and lets you mint that score as a permanent
                             credential on the Base network. No flattery. No
@@ -299,7 +313,7 @@ export default function Home() {
                             </button>
                         </div>
 
-                        <div className="mt-10 border-t border-gold/12 pt-6 text-[0.72rem] uppercase tracking-[0.2em] text-soft/66">
+                        <div className="mt-10 border-t border-gold/12 pt-6 text-[0.72rem] uppercase tracking-[0.2em] text-soft">
                             ✦ Results in under 60 seconds · ✦ Photo deleted
                             immediately after · ✦ Score minted on Base · ✦ No
                             account required to start
@@ -344,13 +358,13 @@ export default function Home() {
                                 </div>
                                 <div className="flex flex-col justify-between p-8">
                                     <div>
-                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/70">
+                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold">
                                             Sample result
                                         </p>
                                         <div className="mt-4 font-serif text-[5rem] font-light leading-none text-gold-bright">
                                             8.3
                                         </div>
-                                        <p className="mt-3 text-[0.7rem] uppercase tracking-[0.3em] text-soft/56">
+                                        <p className="mt-3 text-[0.7rem] uppercase tracking-[0.3em] text-soft">
                                             Top 10 percentile globally
                                         </p>
                                         <div className="mt-5 inline-flex border border-gold/20 px-3 py-2 text-[0.66rem] uppercase tracking-[0.2em] text-gold-light">
@@ -366,7 +380,7 @@ export default function Home() {
                                             { label: "Structure", value: 72 },
                                         ].map((metric) => (
                                             <div key={metric.label} className="space-y-2">
-                                                <div className="flex items-end justify-between text-[0.7rem] uppercase tracking-[0.24em] text-soft/60">
+                                                <div className="flex items-end justify-between text-[0.7rem] uppercase tracking-[0.24em] text-soft">
                                                     <span>{metric.label}</span>
                                                     <span className="font-serif text-[1rem] tracking-normal text-gold-light">
                                                         {metric.value}
@@ -382,7 +396,7 @@ export default function Home() {
                                         ))}
                                     </div>
 
-                                    <p className="mt-10 border-t border-gold/10 pt-6 font-serif text-[1rem] italic leading-7 text-soft/72">
+                                    <p className="mt-10 border-t border-gold/10 pt-6 font-serif text-[1rem] italic leading-7 text-soft">
                                         &quot;The first time I&apos;ve seen something tell
                                         me the honest truth about my face — and I
                                         can actually prove it&apos;s mine.&quot;
@@ -400,7 +414,7 @@ export default function Home() {
                                 <p className="font-serif text-[2.9rem] font-light leading-none text-gold-bright">
                                     {item.value}
                                 </p>
-                                <p className="mt-3 max-w-[15rem] text-[0.76rem] uppercase tracking-[0.18em] text-soft/62">
+                                <p className="mt-3 max-w-[15rem] text-[0.76rem] uppercase tracking-[0.18em] text-soft">
                                     {item.label}
                                 </p>
                             </div>
@@ -410,10 +424,10 @@ export default function Home() {
 
                 <section className="mx-auto grid max-w-7xl gap-14 px-6 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20 lg:px-12 lg:py-32">
                     <SectionHeader
-                        label="Why Soundarya exists"
+                        label="Why Uzoza exists"
                         title="Everyone has an opinion about how you look. Nobody has ever given you the data."
                     />
-                    <div className="space-y-7 text-[1rem] leading-8 text-soft/82">
+                    <div className="space-y-7 text-[1rem] leading-8 text-soft">
                         <p>
                             Your friends flatter you. Dating apps give you swipe
                             counts but no explanation. Mirrors show you what you
@@ -423,7 +437,7 @@ export default function Home() {
                             than preference.
                         </p>
                         <p>
-                            Soundarya does that. And then it goes one step
+                            Uzoza does that. And then it goes one step
                             further: it lets you own the result.
                         </p>
                         <div className="border border-gold/14 bg-surface/36 p-7 font-serif text-[1.15rem] italic leading-8 text-gold-light">
@@ -454,13 +468,13 @@ export default function Home() {
                                         {step.number}
                                     </div>
                                     <div>
-                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold/68">
+                                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gold">
                                             {step.label}
                                         </p>
                                         <h3 className="mt-3 font-serif text-[2rem] font-light tracking-[-0.03em] text-text">
                                             {step.title}
                                         </h3>
-                                        <p className="mt-4 max-w-4xl text-[0.98rem] leading-8 text-soft/80">
+                                        <p className="mt-4 max-w-4xl text-[0.98rem] leading-8 text-soft">
                                             {step.body}
                                         </p>
                                         {step.number === "02" ? (
@@ -487,7 +501,7 @@ export default function Home() {
                     <SectionHeader
                         label="The science"
                         title="Seven dimensions. One honest number."
-                        body="Soundarya doesn't guess. It measures."
+                        body="Uzoza doesn't guess. It measures."
                     />
                     <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                         {dimensions.map((dimension, index) => (
@@ -503,13 +517,13 @@ export default function Home() {
                                 <h3 className="mt-3 font-serif text-[1.9rem] font-light text-text">
                                     {dimension.title}
                                 </h3>
-                                <p className="mt-4 text-[0.96rem] leading-8 text-soft/80">
+                                <p className="mt-4 text-[0.96rem] leading-8 text-soft">
                                     {dimension.body}
                                 </p>
                             </article>
                         ))}
                     </div>
-                    <p className="mt-10 max-w-4xl text-[0.98rem] leading-8 text-soft/78">
+                    <p className="mt-10 max-w-4xl text-[0.98rem] leading-8 text-soft">
                         All seven feed a single overall score from 1.0 to 10.0,
                         placed against a global percentile. Most people land
                         between 5.0 and 7.0. A score above 8.0 is genuinely rare.
@@ -523,9 +537,9 @@ export default function Home() {
                                 label="Onchain · Base network"
                                 title="Your score should belong to you. Not to us. Not to a server. To your wallet."
                             />
-                            <div className="mt-8 space-y-6 text-[1rem] leading-8 text-soft/82">
+                            <div className="mt-8 space-y-6 text-[1rem] leading-8 text-soft">
                                 <p>
-                                    Every analysis you run on Soundarya produces a
+                                    Every analysis you run on Uzoza produces a
                                     result stored in our database. But a database
                                     can be deleted, altered, or taken offline. An
                                     onchain record cannot.
@@ -541,7 +555,7 @@ export default function Home() {
                                     dispute it, or take it away.
                                 </p>
                                 <p>
-                                    This is what makes Soundarya different from
+                                    This is what makes Uzoza different from
                                     every other analysis tool: the result is
                                     genuinely yours.
                                 </p>
@@ -557,7 +571,7 @@ export default function Home() {
                                     <h3 className="font-serif text-[1.7rem] font-light text-text">
                                         {benefit.title}
                                     </h3>
-                                    <p className="mt-3 text-[0.96rem] leading-8 text-soft/78">
+                                    <p className="mt-3 text-[0.96rem] leading-8 text-soft">
                                         {benefit.body}
                                     </p>
                                 </article>
@@ -575,7 +589,7 @@ export default function Home() {
                         <SectionHeader
                             label="Global rankings · Weekly epoch"
                             title="How do you rank against everyone else who has been honest about their face?"
-                            body="The Soundarya leaderboard resets every seven days. To enter, you must have minted your score as an NFT — that is the proof that your result is real. Each epoch, the top ten scores hold their position. At the end of the week, rankings are recorded permanently and a new competition begins."
+                            body="The Uzoza leaderboard resets every seven days. To enter, you must have minted your score as an NFT — that is the proof that your result is real. Each epoch, the top ten scores hold their position. At the end of the week, rankings are recorded permanently and a new competition begins."
                         />
                         <button className="btn-secondary mt-10">
                             → View full leaderboard
@@ -595,7 +609,7 @@ export default function Home() {
                             </div>
                         </div>
                         <div className="border border-gold/12 bg-surface/40 p-8">
-                        <div className="grid grid-cols-[1.1fr_0.9fr_1fr_1fr_1fr] gap-3 border-b border-gold/10 pb-4 text-[0.68rem] uppercase tracking-[0.22em] text-soft/58">
+                        <div className="grid grid-cols-[1.1fr_0.9fr_1fr_1fr_1fr] gap-3 border-b border-gold/10 pb-4 text-[0.68rem] uppercase tracking-[0.22em] text-soft">
                             <span>Rank</span>
                             <span>Score</span>
                             <span>Percentile</span>
@@ -622,13 +636,13 @@ export default function Home() {
                             <SectionHeader
                                 label="Progress tracking"
                                 title="Beauty is not static. Your score shouldn't be either."
-                                body="Seven days after your last paid analysis, Soundarya unlocks a rescan. Same nine dimensions, same scientific framework, new portrait. If your score improves — better sleep, a new skincare routine, changed lighting, actual physical change — it shows up in the reading."
+                                body="Seven days after your last paid analysis, Uzoza unlocks a rescan. Same nine dimensions, same scientific framework, new portrait. If your score improves — better sleep, a new skincare routine, changed lighting, actual physical change — it shows up in the reading."
                             />
-                            <p className="mt-6 max-w-xl text-[1rem] leading-8 text-soft/80">
+                            <p className="mt-6 max-w-xl text-[1rem] leading-8 text-soft">
                                 Mint your new score. Submit it to the leaderboard.
                                 Watch your position move.
                             </p>
-                            <p className="mt-8 font-serif text-[1rem] italic leading-7 text-soft/72">
+                            <p className="mt-8 font-serif text-[1rem] italic leading-7 text-soft">
                                 &quot;The rescan after six weeks of consistent sleep
                                 and skincare hit different. +0.6 points. Minted
                                 immediately.&quot;
@@ -728,13 +742,13 @@ export default function Home() {
                         ))}
                     </div>
 
-                    <p className="mt-10 max-w-5xl text-[0.96rem] leading-8 text-soft/78">
+                    <p className="mt-10 max-w-5xl text-[0.96rem] leading-8 text-soft">
                         All payments are processed in ETH on the Base network.
                         Dollar equivalents are calculated at current ETH price and
                         displayed at checkout. No subscription. No recurring
                         charge. Pay once, own your report.
                     </p>
-                    <div className="mt-6 border border-gold/12 bg-surface/36 p-6 text-[0.92rem] leading-8 text-soft/78">
+                    <div className="mt-6 border border-gold/12 bg-surface/36 p-6 text-[0.92rem] leading-8 text-soft">
                         Want to own your result onchain?
                         <br />
                         Add an NFT mint for 0.001 ETH — roughly $2–3 at current
@@ -762,17 +776,17 @@ export default function Home() {
                             <SectionHeader
                                 label="What the report looks like"
                                 title="One focal score. Every dimension in full."
-                                body="The Soundarya report is structured like a premium consultation — a single headline number, a percentile context, and then each dimension broken down with the clarity that makes the observation actually useful."
+                                body="The Uzoza report is structured like a premium consultation — a single headline number, a percentile context, and then each dimension broken down with the clarity that makes the observation actually useful."
                             />
 
                             <div className="mt-10 border border-gold/12 bg-surface/38 p-8">
                                 <div className="font-serif text-[5.5rem] font-light leading-none text-gold-bright">
                                     8.3
                                 </div>
-                                <p className="mt-3 text-[0.68rem] uppercase tracking-[0.32em] text-soft/58">
+                                <p className="mt-3 text-[0.68rem] uppercase tracking-[0.32em] text-soft">
                                     Top 10 percentile globally
                                 </p>
-                                <p className="mt-3 text-[0.84rem] uppercase tracking-[0.18em] text-gold/70">
+                                <p className="mt-3 text-[0.84rem] uppercase tracking-[0.18em] text-gold">
                                     Category: Very Attractive
                                 </p>
 
@@ -780,7 +794,7 @@ export default function Home() {
                                     {resultMetrics.map((metric) => (
                                         <div key={metric.label} className="space-y-2">
                                             <div className="flex items-end justify-between">
-                                                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-soft/60">
+                                                <p className="text-[0.68rem] uppercase tracking-[0.28em] text-soft">
                                                     {metric.label}
                                                 </p>
                                                 <p className="font-serif text-[1.15rem] text-gold-light">
@@ -798,7 +812,7 @@ export default function Home() {
                                 </div>
 
                                 <div className="mt-8 border border-dashed border-gold/18 bg-deep/50 p-6">
-                                    <p className="text-[0.92rem] leading-8 text-soft/44 blur-[1.8px]">
+                                    <p className="text-[0.92rem] leading-8 text-soft blur-[1.8px]">
                                         &quot;Strong bilateral symmetry positions you
                                         well above average on the dimension most
                                         correlated with attraction across cultures.
@@ -812,7 +826,7 @@ export default function Home() {
                                 </div>
 
                                 <div className="mt-8 border-t border-gold/10 pt-6">
-                                    <p className="text-[0.92rem] leading-8 text-soft/78">
+                                    <p className="text-[0.92rem] leading-8 text-soft">
                                         The full reading requires Premium. Unlock
                                         20 observations, all dimensions explained,
                                         and your improvement roadmap.
@@ -836,7 +850,7 @@ export default function Home() {
                             title="One portrait. The honest answer."
                             body="Upload a clean, front-facing portrait. No filters, no sunglasses, no heavy shadows. The analysis takes under a minute. Your photo is deleted the moment the reading is complete — it is never stored, shared, or used for anything beyond your result."
                         />
-                        <div className="mt-10 space-y-4 text-[0.78rem] uppercase tracking-[0.18em] text-soft/68">
+                        <div className="mt-10 space-y-4 text-[0.78rem] uppercase tracking-[0.18em] text-soft">
                             <p>→ Face the camera directly</p>
                             <p>→ Use neutral, natural light</p>
                             <p>→ No filters or heavy editing</p>
@@ -898,14 +912,14 @@ export default function Home() {
                 <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 sm:px-8 lg:grid-cols-3 lg:px-12">
                     <div>
                         <p className="font-serif text-[2rem] font-light text-gold-bright">
-                            Soundarya
+                            Uzoza
                         </p>
                         <p className="mt-1 font-serif text-[1rem] text-soft/78">
                             सौन्दर्य
                         </p>
                         <p className="mt-4 max-w-xs text-sm leading-7 text-soft/70">
                             Beauty intelligence for honest self-review. Built on
-                            Base. Powered by Soundarya Oracle.
+                            Base. Powered by Uzoza Oracle.
                         </p>
                     </div>
 
@@ -922,7 +936,7 @@ export default function Home() {
                 </div>
 
                 <div className="border-t border-gold/10 px-6 py-5 text-center text-[0.7rem] uppercase tracking-[0.18em] text-soft/52 sm:px-8 lg:px-12">
-                    © 2025 Soundarya · सौन्दर्य · All analyses are private. All
+                    © 2025 Uzoza · All analyses are private. All
                     minted scores are permanent.
                 </div>
             </footer>
@@ -937,6 +951,10 @@ export default function Home() {
                 }}
                 imageFile={uploadedFile}
                 analysisResult={isUploading ? null : result}
+            />
+            <DowntimeModal
+                isOpen={downtimeOpen}
+                onClose={() => setDowntimeOpen(false)}
             />
         </div>
     );

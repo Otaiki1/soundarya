@@ -1,4 +1,4 @@
-import { getPromptForTier } from "./prompts";
+import { getPromptForTier, type CalibrationMode } from "./prompts";
 import type {
   AIAnalysisResult,
   AnalysisTier,
@@ -10,12 +10,120 @@ import type {
 export interface GeminiAPIError {
   error: string;
   code?: string;
+  status?: number;
 }
 
 export interface GeminiAPIResponse {
   success: boolean;
   result?: AIAnalysisResult;
   error?: GeminiAPIError;
+}
+
+function isRetryableGeminiStatus(status: number): boolean {
+  return status === 400 || status === 401 || status === 403 || status === 429 || status >= 500;
+}
+
+export function getGeminiApiKeys(): string[] {
+  const multiKeyValue = process.env.GEMINI_API_KEYS ?? "";
+  const parsedMultiKeys = multiKeyValue
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const singleKey = process.env.GEMINI_API_KEY?.trim();
+
+  return Array.from(
+    new Set([
+      ...parsedMultiKeys,
+      ...(singleKey ? [singleKey] : []),
+    ]),
+  );
+}
+
+export async function generateGeminiContent(
+  body: Record<string, unknown>,
+  model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash",
+): Promise<Response> {
+  const apiKeys = getGeminiApiKeys();
+
+  if (apiKeys.length === 0) {
+    throw new Error("No Gemini API keys are configured");
+  }
+
+  const requestBody = JSON.stringify(body);
+  let lastResponse: Response | null = null;
+  let lastError: unknown = null;
+
+  for (const [index, apiKey] of apiKeys.entries()) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: requestBody,
+        },
+      );
+
+      if (response.ok) {
+        return response;
+      }
+
+      lastResponse = response;
+
+      if (!isRetryableGeminiStatus(response.status) || index === apiKeys.length - 1) {
+        return response;
+      }
+
+      console.warn(
+        `Gemini request failed with status ${response.status}. Retrying with backup API key ${index + 2}/${apiKeys.length}.`,
+      );
+    } catch (error) {
+      lastError = error;
+
+      if (index === apiKeys.length - 1) {
+        throw error;
+      }
+
+      console.warn(
+        `Gemini request threw before completion. Retrying with backup API key ${index + 2}/${apiKeys.length}.`,
+        error,
+      );
+    }
+  }
+
+  if (lastResponse) {
+    return lastResponse;
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Gemini request failed before receiving a response");
+}
+
+export function isGeminiServiceUnavailableError(
+  error: GeminiAPIError | undefined,
+): boolean {
+  if (!error) return false;
+
+  if (typeof error.status === "number") {
+    return error.status === 401 || error.status === 403 || error.status === 429 || error.status >= 500;
+  }
+
+  if (error.code === "NETWORK_ERROR") {
+    return true;
+  }
+
+  const normalizedMessage = error.error.toLowerCase();
+  return (
+    normalizedMessage.includes("no gemini api keys") ||
+    normalizedMessage.includes("network error") ||
+    normalizedMessage.includes("fetch failed") ||
+    normalizedMessage.includes("gemini api error")
+  );
 }
 
 const SCORE_CATEGORIES: ScoreCategory[] = [
@@ -34,6 +142,25 @@ const FACE_ARCHETYPES: FaceArchetype[] = [
   "Rounded",
   "Defined",
 ];
+
+const FACE_ARCHETYPE_ALIASES: Record<string, FaceArchetype> = {
+  sharp: "Sharp",
+  angular: "Angular",
+  balanced: "Balanced",
+  soft: "Soft",
+  rounded: "Rounded",
+  defined: "Defined",
+  "sharp angular": "Sharp",
+  "sharp-angular": "Sharp",
+  "soft balanced": "Balanced",
+  "soft-balanced": "Balanced",
+  "strong structured": "Defined",
+  "strong-structured": "Defined",
+  "delicate refined": "Soft",
+  "delicate-refined": "Soft",
+  "harmonious even": "Balanced",
+  "harmonious-even": "Balanced",
+};
 
 const WEAKEST_DIMENSIONS = [
   "Symmetry",
@@ -71,6 +198,123 @@ const DIMENSION_ALIASES: Record<string, string> = {
   facialadiposity: "Adiposity",
   "facial adiposity": "Adiposity",
 };
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function roundToTenth(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+const PHOTO_ADVICE_PATTERNS = [
+  "photo",
+  "picture",
+  "image",
+  "camera",
+  "lighting",
+  "light",
+  "angle",
+  "pose",
+  "selfie",
+  "filter",
+  "edit",
+  "edited",
+  "retouch",
+  "crop",
+  "portrait",
+  "upload",
+  "resolution",
+  "background",
+];
+
+function deriveCategory(overallScore: number): ScoreCategory {
+  if (overallScore >= 9) return "Exceptional";
+  if (overallScore >= 8) return "Very Attractive";
+  if (overallScore >= 7) return "Above Average";
+  if (overallScore >= 5.5) return "Average";
+  return "Below Average";
+}
+
+function normalizeFaceArchetype(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/[_-]+/g, " ");
+  return FACE_ARCHETYPE_ALIASES[normalized] ?? value;
+}
+
+function getDimensionScores(result: AIAnalysisResult): number[] {
+  return [
+    result.symmetryScore,
+    result.harmonyScore,
+    result.proportionalityScore,
+    result.averagenessScore,
+    result.boneStructureScore,
+    result.skinScore,
+    result.dimorphismScore,
+    result.neotenyScore,
+    result.adiposityScore,
+  ];
+}
+
+function getCalibrationIssues(result: AIAnalysisResult): string[] {
+  const issues: string[] = [];
+  const dimensionScores = getDimensionScores(result);
+  const avgDimensionScore =
+    dimensionScores.reduce((sum, score) => sum + score, 0) / dimensionScores.length;
+  const exceptionalDimensions = dimensionScores.filter((score) => score >= 80).length;
+  const eliteDimensions = dimensionScores.filter((score) => score >= 85).length;
+  const clusteredSpread = Math.max(...dimensionScores) - Math.min(...dimensionScores);
+  const allHighDimensions = dimensionScores.every((score) => score > 75);
+
+  if (result.overallScore >= 8 && avgDimensionScore < 70) {
+    issues.push("overall score is high relative to average dimension score");
+  }
+
+  if (result.overallScore >= 7.5 && exceptionalDimensions === 0) {
+    issues.push("overall score is high without any exceptional dimensions");
+  }
+
+  if (result.overallScore >= 8.5 && exceptionalDimensions < 3) {
+    issues.push("overall score above 8.5 requires multiple exceptional dimensions");
+  }
+
+  if (allHighDimensions && result.overallScore < 8.5) {
+    issues.push("all dimensions are unusually high for the reported overall score");
+  }
+
+  if (result.overallScore >= 9 && eliteDimensions < 4) {
+    issues.push("overall score above 9.0 requires several elite dimensions");
+  }
+
+  if (result.confidenceScore < 0.35 && result.overallScore > 7.5) {
+    issues.push("low confidence image should not produce a very high score");
+  }
+
+  if (result.overallScore >= 8 && result.percentile < 80) {
+    issues.push("percentile is too low for a top-tier overall score");
+  }
+
+  if (result.overallScore < 5.5 && result.percentile > 55) {
+    issues.push("percentile is too high for a below-average overall score");
+  }
+
+  if (result.overallScore >= 7.5 && clusteredSpread <= 6) {
+    issues.push("dimension scores are too tightly clustered for a strong result");
+  }
+
+  if (
+    Array.isArray(result.improvementPredictions) &&
+    result.improvementPredictions.some((prediction) => prediction.deltaScore > 1)
+  ) {
+    issues.push("improvement predictions contain unrealistic score deltas");
+  }
+
+  return issues;
+}
+
+function containsPhotographyAdvice(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return PHOTO_ADVICE_PATTERNS.some((pattern) => normalized.includes(pattern));
+}
 
 function getAnalysisSchema(tier: AnalysisTier) {
   const properties = {
@@ -267,6 +511,27 @@ function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
 
   return {
     ...parsed,
+    overallScore:
+      typeof parsed.overallScore === "number"
+        ? roundToTenth(clamp(parsed.overallScore, 1, 10))
+        : parsed.overallScore,
+    percentile:
+      typeof parsed.percentile === "number"
+        ? clamp(Math.round(parsed.percentile), 1, 99)
+        : parsed.percentile,
+    category:
+      typeof parsed.overallScore === "number"
+        ? deriveCategory(parsed.overallScore)
+        : parsed.category,
+    faceArchetype: normalizeFaceArchetype(parsed.faceArchetype) as FaceArchetype,
+    confidenceScore:
+      typeof parsed.confidenceScore === "number"
+        ? clamp(parsed.confidenceScore, 0, 1)
+        : parsed.confidenceScore,
+    executiveSummary:
+      typeof parsed.executiveSummary === "string"
+        ? parsed.executiveSummary.trim()
+        : parsed.executiveSummary,
     strengths: sanitizeStringArray(parsed.strengths, 7),
     weaknesses: sanitizeStringArray(parsed.weaknesses, 5),
     tradeoffs: sanitizeStringArray(parsed.tradeoffs, 8),
@@ -277,18 +542,34 @@ function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
       WEAKEST_DIMENSIONS.includes(normalizedWeakest)
         ? normalizedWeakest
         : inferWeakestDimension(parsed),
+    freeTip:
+      typeof parsed.freeTip === "string"
+        ? parsed.freeTip.trim()
+        : parsed.freeTip,
     improvementPredictions: Array.isArray(parsed.improvementPredictions)
       ? parsed.improvementPredictions.slice(0, 6).map((prediction) => ({
-          ...prediction,
+          change:
+            typeof prediction.change === "string"
+              ? prediction.change.trim()
+              : prediction.change,
+          deltaScore:
+            typeof prediction.deltaScore === "number"
+              ? roundToTenth(prediction.deltaScore)
+              : prediction.deltaScore,
           affectedDimensions: Array.isArray(prediction.affectedDimensions)
             ? prediction.affectedDimensions
                 .map((dimension) =>
-                typeof dimension === "string"
-                  ? normalizeDimensionLabel(dimension)
-                  : dimension,
-              )
+                  typeof dimension === "string"
+                    ? normalizeDimensionLabel(dimension)
+                    : dimension,
+                )
                 .filter((dimension): dimension is string => typeof dimension === "string")
             : prediction.affectedDimensions,
+          timeframe:
+            typeof prediction.timeframe === "string"
+              ? prediction.timeframe.trim()
+              : prediction.timeframe,
+          difficulty: prediction.difficulty,
         }))
       : parsed.improvementPredictions,
   };
@@ -302,10 +583,19 @@ function validateImprovementPredictions(
   return predictions.every((prediction) => {
     return (
       typeof prediction.change === "string" &&
+      prediction.change.trim().length > 0 &&
       typeof prediction.deltaScore === "number" &&
+      prediction.deltaScore > 0 &&
+      prediction.deltaScore <= 1 &&
       Array.isArray(prediction.affectedDimensions) &&
+      prediction.affectedDimensions.length > 0 &&
+      prediction.affectedDimensions.every((dimension) =>
+        WEAKEST_DIMENSIONS.includes(normalizeDimensionLabel(dimension)),
+      ) &&
       typeof prediction.timeframe === "string" &&
-      ["easy", "medium", "hard"].includes(prediction.difficulty)
+      prediction.timeframe.trim().length > 0 &&
+      ["easy", "medium", "hard"].includes(prediction.difficulty) &&
+      !(prediction.deltaScore >= 0.8 && prediction.difficulty === "easy")
     );
   });
 }
@@ -382,17 +672,7 @@ function validateAnalysisResult(
     };
   }
 
-  const dimensionScores = [
-    normalized.symmetryScore,
-    normalized.harmonyScore,
-    normalized.proportionalityScore,
-    normalized.averagenessScore,
-    normalized.boneStructureScore,
-    normalized.skinScore,
-    normalized.dimorphismScore,
-    normalized.neotenyScore,
-    normalized.adiposityScore,
-  ];
+  const dimensionScores = getDimensionScores(normalized);
 
   if (!dimensionScores.every(validateIntegerScore)) {
     return {
@@ -430,10 +710,43 @@ function validateAnalysisResult(
     };
   }
 
-  if (tier === "free") {
+  if (
+    typeof normalized.executiveSummary !== "string" ||
+    normalized.executiveSummary.length === 0
+  ) {
     return {
-        success: true,
-        result: {
+      success: false,
+      error: { error: "executiveSummary is required" },
+    };
+  }
+
+  if (typeof normalized.freeTip !== "string" || normalized.freeTip.length === 0) {
+    return {
+      success: false,
+      error: { error: "freeTip is required" },
+    };
+  }
+
+  if (containsPhotographyAdvice(normalized.freeTip)) {
+    return {
+      success: false,
+      error: {
+        error: "freeTip must focus on improving appearance, not photo quality",
+      },
+    };
+  }
+
+  if (tier === "free") {
+    if (normalizedStrengths.length < 3) {
+      return {
+        success: false,
+        error: { error: "Free tier requires exactly 3 strengths" },
+      };
+    }
+
+    return {
+      success: true,
+      result: {
         ...normalized,
         strengths: normalizedStrengths,
         weaknesses: [],
@@ -445,37 +758,53 @@ function validateAnalysisResult(
     };
   }
 
-  if (
-    normalizedWeaknesses.length === 0
-  ) {
+  if (normalizedWeaknesses.length < 2) {
     return {
       success: false,
-      error: { error: "Premium and elite tiers require at least one weakness" },
+      error: { error: "Premium and elite tiers require at least 2 weaknesses" },
     };
   }
 
-  if (normalizedPremiumTips.length === 0) {
+  if (normalizedTradeoffs.length < 2) {
     return {
       success: false,
-      error: { error: "At least one premium tip is required" },
+      error: { error: "Premium and elite tiers require at least 2 tradeoffs" },
     };
   }
 
-  if (normalizedCitations.length === 0) {
+  if (normalizedPremiumTips.length < 8) {
     return {
       success: false,
-      error: { error: "Premium and elite tiers require citations" },
+      error: { error: "Premium and elite tiers require at least 8 premium tips" },
+    };
+  }
+
+  if (normalizedPremiumTips.some(containsPhotographyAdvice)) {
+    return {
+      success: false,
+      error: {
+        error: "premiumTips must focus on appearance improvements, not photo quality",
+      },
+    };
+  }
+
+  if (normalizedCitations.length < 2) {
+    return {
+      success: false,
+      error: { error: "Premium and elite tiers require at least 2 citations" },
     };
   }
 
   if (tier === "elite") {
     if (
-      normalizedImprovementPredictions.length === 0 ||
+      normalizedImprovementPredictions.length < 3 ||
       !validateImprovementPredictions(normalizedImprovementPredictions)
     ) {
       return {
         success: false,
-        error: { error: "Elite tier requires improvement predictions" },
+        error: {
+          error: "Elite tier requires at least 3 valid improvement predictions",
+        },
       };
     }
   }
@@ -499,57 +828,43 @@ function stripDataUrlPrefix(imageBase64: string): string {
   return commaIndex >= 0 ? imageBase64.slice(commaIndex + 1) : imageBase64;
 }
 
-export async function analyseWithGemini(
+async function runGeminiAnalysisAttempt(
   imageBase64: string,
   mimeType: string,
   tier: AnalysisTier,
+  calibrationMode: CalibrationMode,
 ): Promise<GeminiAPIResponse> {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      return {
-        success: false,
-        error: { error: "GEMINI_API_KEY is not configured" },
-      };
-    }
+  const prompt = getPromptForTier(tier, calibrationMode);
+  const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
 
-    const prompt = getPromptForTier(tier);
-    const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: prompt.systemPrompt }],
-          },
-          contents: [
+  const response = await generateGeminiContent(
+    {
+      systemInstruction: {
+        parts: [{ text: prompt.systemPrompt }],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt.userPrompt },
             {
-              role: "user",
-              parts: [
-                { text: prompt.userPrompt },
-                {
-                  inlineData: {
-                    mimeType,
-                    data: stripDataUrlPrefix(imageBase64),
-                  },
-                },
-              ],
+              inlineData: {
+                mimeType,
+                data: stripDataUrlPrefix(imageBase64),
+              },
             },
           ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseJsonSchema: getAnalysisSchema(tier),
-            temperature: 0.2,
-            maxOutputTokens: tier === "elite" ? 2600 : 2200,
-          },
-        }),
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseJsonSchema: getAnalysisSchema(tier),
+        temperature: calibrationMode === "strictRetry" ? 0.1 : 0.2,
+        maxOutputTokens: tier === "elite" ? 2600 : 2200,
       },
-    );
+    },
+    model,
+  );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -557,37 +872,97 @@ export async function analyseWithGemini(
         success: false,
         error: {
           error: `Gemini API error: ${response.status} ${response.statusText}`,
+          status: response.status,
           code:
             typeof errorData?.error?.status === "string"
               ? errorData.error.status
-              : undefined,
-        },
-      };
-    }
+            : undefined,
+      },
+    };
+  }
 
-    const data = await response.json();
-    const outputText = extractOutputText(data);
+  const data = await response.json();
+  const outputText = extractOutputText(data);
 
-    if (!outputText) {
+  if (!outputText) {
+    return {
+      success: false,
+      error: {
+        error: "Invalid response from Gemini: missing structured output",
+      },
+    };
+  }
+
+  const parsed = tryParseJson(outputText);
+
+  if (!parsed) {
+    console.error("Gemini JSON parse failure. Raw output:", outputText);
+    return {
+      success: false,
+      error: { error: "Failed to parse Gemini response as JSON" },
+    };
+  }
+
+  return validateAnalysisResult(parsed, tier);
+}
+
+export async function analyseWithGemini(
+  imageBase64: string,
+  mimeType: string,
+  tier: AnalysisTier,
+): Promise<GeminiAPIResponse> {
+  try {
+    if (getGeminiApiKeys().length === 0) {
       return {
         success: false,
-        error: {
-          error: "Invalid response from Gemini: missing structured output",
-        },
+        error: { error: "No Gemini API keys are configured", status: 503 },
       };
     }
 
-    const parsed = tryParseJson(outputText);
+    const firstAttempt = await runGeminiAnalysisAttempt(
+      imageBase64,
+      mimeType,
+      tier,
+      "default",
+    );
 
-    if (!parsed) {
-      console.error("Gemini JSON parse failure. Raw output:", outputText);
-      return {
-        success: false,
-        error: { error: "Failed to parse Gemini response as JSON" },
-      };
+    if (!firstAttempt.success || !firstAttempt.result) {
+      return firstAttempt;
     }
 
-    return validateAnalysisResult(parsed, tier);
+    const firstAttemptIssues = getCalibrationIssues(firstAttempt.result);
+    if (firstAttemptIssues.length === 0) {
+      return firstAttempt;
+    }
+
+    console.warn(
+      "Gemini analysis flagged for calibration retry:",
+      firstAttemptIssues.join("; "),
+    );
+
+    const secondAttempt = await runGeminiAnalysisAttempt(
+      imageBase64,
+      mimeType,
+      tier,
+      "strictRetry",
+    );
+
+    if (!secondAttempt.success || !secondAttempt.result) {
+      console.warn(
+        "Gemini retry failed, returning first attempt despite calibration issues.",
+      );
+      return firstAttempt;
+    }
+
+    const secondAttemptIssues = getCalibrationIssues(secondAttempt.result);
+    if (secondAttemptIssues.length > 0) {
+      console.warn(
+        "Gemini analysis still appears inflated after strict retry:",
+        secondAttemptIssues.join("; "),
+      );
+    }
+
+    return secondAttempt;
   } catch (error) {
     console.error("Gemini API call error:", error);
     return {
@@ -597,6 +972,8 @@ export async function analyseWithGemini(
           error instanceof Error
             ? error.message
             : "Unknown error calling Gemini API",
+        code: error instanceof Error ? "NETWORK_ERROR" : undefined,
+        status: 503,
       },
     };
   }
@@ -607,31 +984,24 @@ export async function testGeminiAPI(): Promise<{
   error?: string;
 }> {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return { available: false, error: "GEMINI_API_KEY not configured" };
+    if (getGeminiApiKeys().length === 0) {
+      return { available: false, error: "No Gemini API keys are configured" };
     }
 
     const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    const response = await generateGeminiContent(
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: "Reply with the single word online." }],
-            },
-          ],
-          generationConfig: {
-            maxOutputTokens: 10,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: "Reply with the single word online." }],
           },
-        }),
+        ],
+        generationConfig: {
+          maxOutputTokens: 10,
+        },
       },
+      model,
     );
 
     if (response.ok) {

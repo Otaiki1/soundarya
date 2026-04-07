@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getOrCreateSessionId } from "@/lib/session";
 
 interface EmailCaptureProps {
   analysisId: string;
 }
 
-const DISMISSED_KEY = "soundarya_email_capture_dismissed";
+const DISMISSED_KEY = "uzoza_email_capture_dismissed";
 
 export function EmailCapture({ analysisId }: EmailCaptureProps) {
   const [email, setEmail] = useState("");
@@ -39,7 +40,11 @@ export function EmailCapture({ analysisId }: EmailCaptureProps) {
       const response = await fetch("/api/collect-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId, email }),
+        body: JSON.stringify({
+          analysisId,
+          email,
+          sessionId: getOrCreateSessionId(),
+        }),
       });
 
       if (!response.ok) {

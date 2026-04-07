@@ -42,7 +42,7 @@ export default function AuthCallback() {
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                            Soundarya
+                            Uzoza
                         </h1>
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                         <p className="text-gray-600">{message}</p>

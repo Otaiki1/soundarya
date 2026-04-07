@@ -7,6 +7,7 @@ import {
 } from "wagmi";
 import { SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from "@/lib/contracts";
 import { analysisIdToContractUint } from "@/lib/scans";
+import { getOrCreateSessionId } from "@/lib/session";
 
 export function useUnlockReport() {
   const { address, isConnected } = useAccount();
@@ -49,6 +50,7 @@ export function useUnlockReport() {
         analysisId: pendingMeta.analysisId,
         walletAddress: address,
         txHash,
+        sessionId: getOrCreateSessionId(),
       }),
     });
   }, [address, isConfirmed, pendingMeta, txHash]);

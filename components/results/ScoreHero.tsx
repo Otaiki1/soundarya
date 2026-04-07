@@ -10,11 +10,11 @@ export function ScoreHero({ analysis }: ScoreHeroProps) {
             <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 blur-[120px] -z-10 rounded-full opacity-50"></div>
 
             <div className="mb-8">
-                <p className="eyebrow mb-4 opacity-80">Your Soundarya Score</p>
+                <p className="eyebrow mb-4">Your Uzoza Score</p>
                 <div className="font-serif text-[clamp(3.5rem,12vw,8rem)] font-light text-gold leading-none mb-3">
                     {analysis.overallScore.toFixed(1)}
                 </div>
-                <div className="text-[11px] text-muted tracking-[0.2em] uppercase mb-6 opacity-70">
+                <div className="text-[11px] text-muted tracking-[0.2em] uppercase mb-6">
                     out of 10
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-3">
@@ -32,7 +32,7 @@ export function ScoreHero({ analysis }: ScoreHeroProps) {
                     Top <em className="text-gold">{analysis.percentile}%</em> of
                     Analyzed Faces
                 </div>
-                <p className="text-[10px] tracking-[0.16em] text-muted uppercase opacity-60">
+                <p className="text-[10px] tracking-[0.16em] text-muted uppercase">
                     Global Aesthetic Ranking
                 </p>
             </div>

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createStoredAnalysis, deriveIpHash, ensureRateLimit } from "@/lib/analysis-service";
+import {
+  AnalysisServiceError,
+  createStoredAnalysis,
+  deriveIpHash,
+  ensureRateLimit,
+} from "@/lib/analysis-service";
 import {
   extractIPFromRequest,
   getCountryFromIP,
@@ -66,6 +71,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Analysis endpoint error:", error);
+
+    if (error instanceof AnalysisServiceError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(

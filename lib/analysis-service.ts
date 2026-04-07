@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { checkRateLimit, hashIP } from "@/lib/rate-limit";
-import { analyseWithGemini } from "@/lib/gemini";
+import { analyseWithGemini, isGeminiServiceUnavailableError } from "@/lib/gemini";
 import {
   imageToBase64,
   processImageForAnalysis,
@@ -21,6 +21,18 @@ interface CreateAnalysisParams {
   userId?: string | null;
   tier?: AnalysisTier;
   skipRateLimit?: boolean;
+}
+
+export class AnalysisServiceError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, status: number, code: string) {
+    super(message);
+    this.name = "AnalysisServiceError";
+    this.status = status;
+    this.code = code;
+  }
 }
 
 function toPublicAnalysis(
@@ -91,6 +103,14 @@ export async function createStoredAnalysis({
   const aiResult = await analyseWithGemini(imageBase64, "image/jpeg", tier);
 
   if (!aiResult.success || !aiResult.result) {
+    if (isGeminiServiceUnavailableError(aiResult.error)) {
+      throw new AnalysisServiceError(
+        "Uzoza is experiencing temporary downtime. Please come back later.",
+        503,
+        "ORACLE_UNAVAILABLE",
+      );
+    }
+
     throw new Error(
       "AI analysis failed: " + (aiResult.error?.error || "Unknown error"),
     );

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
@@ -6,6 +8,7 @@ export async function POST(request: NextRequest) {
         const {
             analysisId,
             walletAddress,
+            sessionId,
             txHash,
             scoreData,
             status,
@@ -17,6 +20,38 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Missing required fields" },
                 { status: 400 },
+            );
+        }
+
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        const { data: analysis, error: analysisError } = await supabaseAdmin
+            .from("analyses")
+            .select("id, user_id, session_id, wallet_address")
+            .eq("id", analysisId)
+            .single();
+
+        if (analysisError || !analysis) {
+            return NextResponse.json(
+                { error: "Analysis not found" },
+                { status: 404 },
+            );
+        }
+
+        if (
+            !hasAnalysisAccess({
+                analysis,
+                userId: user?.id,
+                sessionId: typeof sessionId === "string" ? sessionId : null,
+                walletAddress,
+            })
+        ) {
+            return NextResponse.json(
+                { error: "You do not have access to record this mint" },
+                { status: 403 },
             );
         }
 

@@ -43,16 +43,9 @@ export async function POST(req: Request) {
 
     // Update state based on payment type
     if (type === 'scan' && analysisId) {
-      await supabaseAdmin
-        .from('analyses')
-        .update({ premium_unlocked: true, premium_tier: 'premium' })
-        .eq('id', analysisId)
       return NextResponse.json({
-        success: true,
-        hash,
-        type,
-        verified: true,
-      })
+        error: 'Legacy scan verification is disabled. Use the unlock verification flow instead.',
+      }, { status: 400 })
     }
 
     if (type === 'subscribe') {

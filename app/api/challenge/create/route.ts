@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
     try {
-        const { analysisId } = await request.json();
+        const { analysisId, sessionId } = await request.json();
 
         if (!analysisId) {
             return NextResponse.json(
@@ -13,10 +15,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
         // Get analysis to verify it exists
         const { data: analysis, error: analysisError } = await supabaseAdmin
             .from("analyses")
-            .select("id, user_id")
+            .select("id, user_id, session_id, wallet_address")
             .eq("id", analysisId)
             .single();
 
@@ -24,6 +31,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Analysis not found" },
                 { status: 404 },
+            );
+        }
+
+        if (
+            !hasAnalysisAccess({
+                analysis,
+                userId: user?.id,
+                sessionId: typeof sessionId === "string" ? sessionId : null,
+            })
+        ) {
+            return NextResponse.json(
+                { error: "You do not have access to this analysis" },
+                { status: 403 },
             );
         }
 

@@ -6,6 +6,7 @@ import {
 } from "wagmi";
 import { parseEther } from "viem";
 import { SOUNDARYA_SCORE_ADDRESS, SOUNDARYA_SCORE_ABI } from "@/lib/contracts";
+import { getOrCreateSessionId } from "@/lib/session";
 
 interface MintSignatureResponse {
     signature: string;
@@ -95,6 +96,7 @@ export function useMintScore(): UseMintScoreResult {
                         body: JSON.stringify({
                             analysisId: pendingAnalysisId,
                             walletAddress: address,
+                            sessionId: getOrCreateSessionId(),
                             txHash: writeData,
                             scoreData: pendingScoreData,
                             status: tokenId ? "confirmed" : "pending",
@@ -139,7 +141,11 @@ export function useMintScore(): UseMintScoreResult {
                 const signatureRes = await fetch("/api/onchain/mint-signature", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ analysisId, walletAddress: address }),
+                    body: JSON.stringify({
+                        analysisId,
+                        walletAddress: address,
+                        sessionId: getOrCreateSessionId(),
+                    }),
                 });
 
                 if (!signatureRes.ok) {

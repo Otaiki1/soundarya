@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicClient, http, type Hex } from "viem";
 import { SOUNDARYA_CHAIN, SOUNDARYA_RPC_URL, SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from "@/lib/contracts";
+import { createClient } from "@/lib/supabase/server";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { analysisIdToContractUint } from "@/lib/scans";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -17,12 +19,44 @@ function tierToDbTier(tier: number) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { analysisId, walletAddress, txHash } = await request.json();
+    const { analysisId, walletAddress, txHash, sessionId } = await request.json();
 
     if (!analysisId || !walletAddress) {
       return NextResponse.json(
         { error: "analysisId and walletAddress are required" },
         { status: 400 },
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: analysis, error: analysisError } = await supabaseAdmin
+      .from("analyses")
+      .select("id, user_id, session_id, wallet_address")
+      .eq("id", analysisId)
+      .single();
+
+    if (analysisError || !analysis) {
+      return NextResponse.json(
+        { error: "Analysis not found" },
+        { status: 404 },
+      );
+    }
+
+    if (
+      !hasAnalysisAccess({
+        analysis,
+        userId: user?.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+        walletAddress,
+      })
+    ) {
+      return NextResponse.json(
+        { error: "You do not have access to unlock this analysis" },
+        { status: 403 },
       );
     }
 

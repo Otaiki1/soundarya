@@ -7,6 +7,7 @@ import { DropZone } from "@/components/upload/DropZone";
 import { ResultModal } from "@/components/upload/ResultModal";
 import { useToast, ToastContainer } from "@/hooks/useToast";
 import type { AnalysisPublic } from "@/types/analysis";
+import { getOrCreateSessionId } from "@/lib/session";
 
 interface PageParams {
     params: Promise<{ token: string }>;
@@ -69,7 +70,10 @@ export default function ChallengePage({ params }: PageParams) {
             const response = await fetch("/api/challenge/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ analysisId: userAnalysis.id }),
+                body: JSON.stringify({
+                    analysisId: userAnalysis.id,
+                    sessionId: getOrCreateSessionId(),
+                }),
             });
 
             if (!response.ok) throw new Error("Failed to create challenge");
@@ -286,14 +290,19 @@ export default function ChallengePage({ params }: PageParams) {
                 </div>
             )}
 
-            <ResultModal
-                isOpen={showResult && !!userAnalysis}
-                analysis={userAnalysis}
-                onClose={() => {
-                    setShowResult(false);
-                    setUserAnalysis(null);
-                }}
-            />
+            {userAnalysis ? (
+                <ResultModal
+                    isOpen={showResult}
+                    result={userAnalysis}
+                    onClose={() => {
+                        setShowResult(false);
+                        setUserAnalysis(null);
+                    }}
+                    onViewFullReport={() => {
+                        setShowResult(false);
+                    }}
+                />
+            ) : null}
 
             <ToastContainer toasts={toasts} removeToast={removeToast} />
         </div>

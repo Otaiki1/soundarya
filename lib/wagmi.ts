@@ -22,7 +22,7 @@ const connectors = walletConnectProjectId
               },
           ],
           {
-              appName: "Soundarya",
+              appName: "Uzoza",
               projectId: walletConnectProjectId,
           },
       )
@@ -34,7 +34,7 @@ const connectors = walletConnectProjectId
               },
           ],
           {
-              appName: "Soundarya",
+              appName: "Uzoza",
               projectId: "soundarya",
           },
       );

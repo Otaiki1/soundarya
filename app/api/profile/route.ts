@@ -30,8 +30,14 @@ export async function GET(request: NextRequest) {
       profile = result.data;
     }
 
+    const normalizedAddress = address?.toLowerCase() ?? null;
+    const isOwnWalletView =
+      Boolean(user?.id) &&
+      Boolean(normalizedAddress) &&
+      profile?.id === user?.id;
+
     const queries = [];
-    if (user?.id) {
+    if (user?.id && (!normalizedAddress || isOwnWalletView)) {
       queries.push(
         supabaseAdmin
           .from("analyses")
@@ -40,12 +46,12 @@ export async function GET(request: NextRequest) {
           .order("created_at", { ascending: false }),
       );
     }
-    if (address) {
+    if (normalizedAddress && isOwnWalletView) {
       queries.push(
         supabaseAdmin
           .from("analyses")
           .select("*")
-          .eq("wallet_address", address.toLowerCase())
+          .eq("wallet_address", normalizedAddress)
           .order("created_at", { ascending: false }),
       );
     }
@@ -58,11 +64,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: nftMints } = address
+    const { data: nftMints } = normalizedAddress && isOwnWalletView
       ? await supabaseAdmin
           .from("nft_mints")
           .select("*")
-          .eq("wallet_address", address.toLowerCase())
+          .eq("wallet_address", normalizedAddress)
           .order("minted_at", { ascending: false })
       : { data: [] };
 

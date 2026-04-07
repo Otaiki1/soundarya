@@ -75,7 +75,7 @@ export function ShareRow({ analysis }: ShareRowProps) {
         <div className="space-y-6 sm:space-y-8">
             <div className="surface-card p-6 sm:p-8 lg:p-10">
                 <div className="mb-6 sm:mb-8">
-                    <p className="eyebrow mb-3 opacity-80">Community</p>
+                    <p className="eyebrow mb-3">Community</p>
                     <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
                         Share Your <em className="text-gold">Results</em>
                     </h3>
@@ -118,12 +118,12 @@ export function ShareRow({ analysis }: ShareRowProps) {
             <div className="surface-card p-6 sm:p-8 lg:p-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <p className="eyebrow mb-3 opacity-80">Continuous Improvement</p>
+                        <p className="eyebrow mb-3">Continuous Improvement</p>
                         <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
                             Track Your <em className="text-gold">Evolution</em>
                         </h3>
                         <p className="mt-4 text-sm text-soft font-light max-w-xl">
-                            Soundarya is designed for long-term tracking. Rescan every week to see how your facial harmony evolves with better grooming and health.
+                            Uzoza is designed for long-term tracking. Rescan every week to see how your facial harmony evolves with better grooming and health.
                         </p>
                     </div>
 

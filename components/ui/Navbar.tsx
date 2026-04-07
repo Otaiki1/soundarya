@@ -21,9 +21,9 @@ export function Navbar() {
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-8 lg:px-12">
                 <Link href="/" className="leading-none transition-opacity hover:opacity-85">
                     <p className="font-serif text-[1.9rem] font-light tracking-[0.04em] text-gold-bright">
-                        Soundarya
+                        Uzoza
                     </p>
-                    <p className="mt-1.5 text-[0.58rem] uppercase tracking-[0.38em] text-soft/46">
+                    <p className="mt-1.5 text-[0.58rem] uppercase tracking-[0.38em] text-soft">
                         सौन्दर्य · Intelligence
                     </p>
                 </Link>

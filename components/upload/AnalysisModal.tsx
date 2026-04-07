@@ -122,7 +122,7 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
             <div className="p-8 sm:p-12 flex flex-col items-center text-center">
               <div className="w-12 h-12 rounded-full border border-gold/30 border-t-gold animate-spin mb-6" />
               <h2 className="font-serif text-4xl text-gold-light mb-2">Analysing your face</h2>
-              <p className="text-[11px] uppercase tracking-[0.15em] text-muted mb-10">Soundarya Oracle · 9 dimensions</p>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-muted mb-10">Uzoza Oracle · 9 dimensions</p>
 
               <div className="w-full max-w-lg space-y-4 text-left">
                 {STAGES.map((stage, index) => {
@@ -151,7 +151,7 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
           {resolvedAnalysis && (
             <>
               <div className="p-6 sm:p-8 border-b border-gold/20">
-                <p className="text-[10px] uppercase tracking-[0.25em] text-gold mb-3">Your Soundarya Report</p>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-gold mb-3">Your Uzoza Report</p>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
                     <h2 className="font-serif text-[clamp(2rem,4vw,3rem)] text-gold-light leading-tight">

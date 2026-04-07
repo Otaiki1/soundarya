@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { testGeminiAPI } from '@/lib/gemini'
+import { getGeminiApiKeys, testGeminiAPI } from '@/lib/gemini'
 
 export const runtime = 'edge'
 
-export async function GET() {
-  const checks: Record<string, boolean | string> = {
+export async function GET(request: Request) {
+  const internalAuthHeader = request.headers.get("authorization")
+  const isInternalRequest =
+    process.env.CRON_SECRET &&
+    internalAuthHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  if (process.env.NODE_ENV === "production" && !isInternalRequest) {
+    return NextResponse.json(
+      { ok: true, timestamp: new Date().toISOString() },
+      { status: 200 },
+    )
+  }
+
+  const checks: Record<string, boolean | string | number> = {
     timestamp: new Date().toISOString(),
   }
 
@@ -40,7 +52,9 @@ export async function GET() {
   checks.resend_configured = !!process.env.RESEND_API_KEY
 
   // Check Gemini API configuration and connectivity
-  checks.gemini_configured = !!process.env.GEMINI_API_KEY
+  const geminiApiKeys = getGeminiApiKeys()
+  checks.gemini_configured = geminiApiKeys.length > 0
+  checks.gemini_key_count = geminiApiKeys.length
 
   if (checks.gemini_configured) {
     try {
@@ -55,7 +69,7 @@ export async function GET() {
     }
   } else {
     checks.gemini_api = false
-    checks.gemini_api_error = 'GEMINI_API_KEY not configured'
+    checks.gemini_api_error = 'No Gemini API keys configured'
   }
 
   checks.image_storage = 'in-memory-only'

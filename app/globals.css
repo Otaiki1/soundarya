@@ -10,7 +10,7 @@
   --color-card: #120d09;
   --color-text: #f3e4ca;
   --color-soft: #d2bea0;
-  --color-muted: rgba(210, 190, 160, 0.48);
+  --color-muted: rgba(210, 190, 160, 0.75);
 
   --shadow-premium: 0 40px 100px rgba(0, 0, 0, 0.55);
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
@@ -26,7 +26,7 @@
   --card: #120d09;
   --text: #f3e4ca;
   --soft: rgba(210, 190, 160, 0.78);
-  --muted: rgba(210, 190, 160, 0.48);
+  --muted: rgba(210, 190, 160, 0.75);
   --border: rgba(201, 169, 110, 0.14);
   --border-light: rgba(201, 169, 110, 0.22);
   --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);

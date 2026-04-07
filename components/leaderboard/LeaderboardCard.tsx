@@ -46,7 +46,7 @@ export function LeaderboardCard({
                                 </span>
                             )}
                             {showCountry && entry.countryCode && (
-                                <span className="text-[10px] tracking-[0.4em] text-muted uppercase opacity-40 border-l border-white/10 pl-6">
+                                <span className="text-[10px] tracking-[0.4em] text-muted uppercase border-l border-white/10 pl-6">
                                     {entry.countryCode}
                                 </span>
                             )}
@@ -59,7 +59,7 @@ export function LeaderboardCard({
                                 }`}>
                                     {entry.overallScore.toFixed(1)}
                                 </span>
-                                <span className="text-[9px] text-muted tracking-[0.3em] uppercase font-light opacity-60">
+                                <span className="text-[9px] text-muted tracking-[0.3em] uppercase font-light">
                                     Rating
                                 </span>
                             </div>
@@ -84,7 +84,7 @@ export function LeaderboardCard({
                         </div>
 
                         {shortWallet && (
-                            <p className="mt-5 text-[10px] tracking-[0.3em] uppercase text-muted opacity-50">
+                            <p className="mt-5 text-[10px] tracking-[0.3em] uppercase text-muted">
                                 {shortWallet}
                             </p>
                         )}
@@ -92,7 +92,7 @@ export function LeaderboardCard({
                 </div>
 
                 {showDate && (
-                    <div className="text-[10px] tracking-[0.3em] text-muted uppercase opacity-40 sm:text-right shrink-0 font-light">
+                    <div className="text-[10px] tracking-[0.3em] text-muted uppercase sm:text-right shrink-0 font-light">
                         {createdAt.toLocaleDateString(undefined, {
                             month: "short",
                             day: "numeric",

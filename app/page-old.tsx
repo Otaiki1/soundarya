@@ -69,7 +69,7 @@ export default function Home() {
       <nav className="fixed inset-x-0 top-0 z-100 bg-[rgba(13,10,7,0.95)] backdrop-blur-md border-b border-gold/15">
         <div className="relative h-20 max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 flex items-center justify-between">
           <div className="leading-none">
-            <p className="font-serif text-[30px] text-gold tracking-[0.08em]">Soundarya</p>
+            <p className="font-serif text-[30px] text-gold tracking-[0.08em]">Uzoza</p>
             <p className="text-[9px] tracking-[0.25em] text-muted uppercase mt-1">सौन्दर्य · Beauty Intelligence</p>
           </div>
 
@@ -164,7 +164,7 @@ export default function Home() {
             <p className="text-gold text-[10px] uppercase tracking-[0.3em] mb-4">Science of Beauty</p>
             <h2 className="font-serif text-[clamp(2rem,4vw,3.4rem)] font-light leading-tight mb-5">A Complete <em className="text-gold">Aesthetic</em> Breakdown</h2>
             <p className="text-muted text-base leading-relaxed mb-10 max-w-xl">
-              Soundarya scores your facial structure across timeless aesthetic dimensions and modern computational markers.
+              Uzoza scores your facial structure across timeless aesthetic dimensions and modern computational markers.
             </p>
 
             <div className="space-y-6">
@@ -268,9 +268,9 @@ export default function Home() {
       <footer className="border-t border-gold/20 py-8">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 grid md:grid-cols-3 gap-5 items-center text-center md:text-left">
           <div>
-            <p className="font-serif text-xl text-gold">Soundarya</p>
+            <p className="font-serif text-xl text-gold">Uzoza</p>
           </div>
-          <p className="text-[11px] text-muted uppercase tracking-[0.12em] md:text-center">© 2025 Soundarya</p>
+          <p className="text-[11px] text-muted uppercase tracking-[0.12em] md:text-center">© 2025 Uzoza</p>
           <div className="flex justify-center md:justify-end gap-5 text-[11px] text-muted uppercase tracking-[0.12em]">
             <Link href="/privacy" className="hover:text-gold">Privacy</Link>
             <Link href="/terms" className="hover:text-gold">Terms</Link>

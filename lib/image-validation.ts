@@ -23,7 +23,7 @@ export interface ProcessedImage {
 }
 
 /**
- * Validates image file according to Soundarya requirements
+ * Validates image file according to Uzoza requirements
  * - Max 10MB file size
  * - Min 200px, max 4096px dimensions
  * - Supported formats: JPEG, PNG, WEBP
@@ -123,7 +123,7 @@ export async function processImageForAnalysis(file: File): Promise<ProcessedImag
 }
 
 /**
- * Converts processed image buffer to base64 for vision API input
+ * Converts processed image buffer to base64 for Grok API
  */
 export function imageToBase64(buffer: Buffer, mimeType: string = 'image/jpeg'): string {
   return `data:${mimeType};base64,${buffer.toString('base64')}`;

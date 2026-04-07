@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { generateGeminiContent, getGeminiApiKeys } from "@/lib/gemini";
 
 async function runAssistantPrompt(message: string, context: Record<string, any>) {
   const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
-  const prompt = `You are Soundarya's Beauty Assistant.
+  const prompt = `You are Uzoza's Beauty Assistant.
 Answer directly, respectfully, and practically. Use the provided analysis context only.
 Do not diagnose disease or recommend invasive procedures.
 
@@ -14,19 +15,12 @@ ${JSON.stringify(context, null, 2)}
 User message:
 ${message}`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+  const response = await generateGeminiContent(
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": process.env.GEMINI_API_KEY || "",
-      },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 600 },
-      }),
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 600 },
     },
+    model,
   );
 
   if (!response.ok) {
@@ -43,6 +37,13 @@ ${message}`;
 export async function POST(request: NextRequest) {
   try {
     const { message, analysisId, sessionId } = await request.json();
+
+    if (getGeminiApiKeys().length === 0) {
+      return NextResponse.json(
+        { error: "Assistant is not configured right now" },
+        { status: 503 },
+      );
+    }
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "message is required" }, { status: 400 });

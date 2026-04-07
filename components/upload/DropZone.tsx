@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { getOrCreateSessionId } from '@/lib/session'
 import type { AnalysisPublic, LoadingStage } from '@/types/analysis'
+import { DowntimeModal } from '@/components/ui/DowntimeModal'
 
 type DropZoneState = 'idle' | 'uploading' | 'analysing' | 'error'
 
@@ -15,6 +16,7 @@ export function DropZone({ onResult, onAnalysisComplete }: DropZoneProps) {
   const [state, setState] = useState<DropZoneState>('idle')
   const [progress, setProgress] = useState<LoadingStage>('detecting')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [downtimeOpen, setDowntimeOpen] = useState(false)
   const handleResult = onResult ?? onAnalysisComplete
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -52,6 +54,11 @@ export function DropZone({ onResult, onAnalysisComplete }: DropZoneProps) {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
+        if (res.status === 503 || errorData?.code === 'ORACLE_UNAVAILABLE') {
+          setState('idle')
+          setDowntimeOpen(true)
+          return
+        }
         throw new Error(errorData.error || 'Analysis failed')
       }
 
@@ -88,39 +95,45 @@ export function DropZone({ onResult, onAnalysisComplete }: DropZoneProps) {
   }
 
   return (
-    <div
-      {...getRootProps()}
-      className={`
-        relative border border-dashed p-8 sm:p-10 text-center cursor-pointer transition-all bg-gold/5 rounded-sm
-        ${isDragActive
-          ? 'border-gold bg-gold/10 scale-[1.01]'
-          : 'border-border/30 hover:border-gold hover:bg-gold/10'
-        }
-      `}
-    >
-      <input {...getInputProps()} />
-      <div className="space-y-5">
-        <div className="mx-auto w-14 h-14 border border-border rounded-full flex items-center justify-center text-gold transition-all">
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
+    <>
+      <div
+        {...getRootProps()}
+        className={`
+          relative border border-dashed p-8 sm:p-10 text-center cursor-pointer transition-all bg-gold/5 rounded-sm
+          ${isDragActive
+            ? 'border-gold bg-gold/10 scale-[1.01]'
+            : 'border-border/30 hover:border-gold hover:bg-gold/10'
+          }
+        `}
+      >
+        <input {...getInputProps()} />
+        <div className="space-y-5">
+          <div className="mx-auto w-14 h-14 border border-border rounded-full flex items-center justify-center text-gold transition-all">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-serif text-xl sm:text-2xl font-light text-text mb-2 tracking-wide">
+              {isDragActive ? 'Drop your photo here' : 'Drop your photo here'}
+            </h3>
+            <p className="text-[10px] tracking-[0.14em] uppercase text-muted mt-1">
+              or click to browse · JPEG, PNG, WEBP · Max 10MB
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary inline-block"
+          >
+            Choose File
+          </button>
         </div>
-        <div>
-          <h3 className="font-serif text-xl sm:text-2xl font-light text-text mb-2 tracking-wide">
-            {isDragActive ? 'Drop your photo here' : 'Drop your photo here'}
-          </h3>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-muted mt-1">
-            or click to browse · JPEG, PNG, WEBP · Max 10MB
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn-secondary inline-block"
-        >
-          Choose File
-        </button>
       </div>
-    </div>
+      <DowntimeModal
+        isOpen={downtimeOpen}
+        onClose={() => setDowntimeOpen(false)}
+      />
+    </>
   )
 }
 

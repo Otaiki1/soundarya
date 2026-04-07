@@ -13,6 +13,13 @@ export const runtime = 'edge'
  */
 export async function GET() {
   try {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Not found" },
+        { status: 404 },
+      )
+    }
+
     // Test 1: Check if profiles table exists and is accessible
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')

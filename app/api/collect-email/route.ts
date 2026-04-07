@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function isValidEmail(email: string) {
@@ -13,12 +15,12 @@ function buildReportEmail(analysis: Record<string, any>, unlockTier: number) {
     : [];
 
   const title =
-    unlockTier >= 2 ? "Your full Soundarya report" : "Your Soundarya summary";
+    unlockTier >= 2 ? "Your full Uzoza report" : "Your Uzoza summary";
 
   const html = `
     <div style="font-family: Georgia, serif; background:#120d09; color:#f6ead9; padding:32px;">
       <div style="max-width:640px; margin:0 auto; border:1px solid rgba(201,169,110,0.25); padding:32px; background:rgba(255,255,255,0.02);">
-        <p style="letter-spacing:0.24em; text-transform:uppercase; font-size:11px; color:#c9a96e;">Soundarya</p>
+        <p style="letter-spacing:0.24em; text-transform:uppercase; font-size:11px; color:#c9a96e;">Uzoza</p>
         <h1 style="font-size:36px; font-weight:400; margin:12px 0 8px;">${title}</h1>
         <p style="font-size:18px; margin:0 0 24px;">Score ${Number(analysis.overall_score).toFixed(1)} · ${analysis.category}</p>
         <p style="line-height:1.8; color:#ddcdb5;">${analysis.summary}</p>
@@ -74,12 +76,43 @@ async function sendViaResend(to: string, subject: string, html: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { analysisId, email } = await request.json();
+    const { analysisId, email, sessionId } = await request.json();
 
     if (!analysisId || !email || !isValidEmail(email)) {
       return NextResponse.json(
         { error: "A valid analysisId and email are required" },
         { status: 400 },
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: existingAnalysis, error: existingAnalysisError } = await supabaseAdmin
+      .from("analyses")
+      .select("id, user_id, session_id, wallet_address")
+      .eq("id", analysisId)
+      .single();
+
+    if (existingAnalysisError || !existingAnalysis) {
+      return NextResponse.json(
+        { error: "Analysis not found" },
+        { status: 404 },
+      );
+    }
+
+    if (
+      !hasAnalysisAccess({
+        analysis: existingAnalysis,
+        userId: user?.id,
+        sessionId: typeof sessionId === "string" ? sessionId : null,
+      })
+    ) {
+      return NextResponse.json(
+        { error: "You do not have access to this analysis" },
+        { status: 403 },
       );
     }
 

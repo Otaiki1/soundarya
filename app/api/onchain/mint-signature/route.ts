@@ -15,6 +15,8 @@ import {
     SOUNDARYA_SCORE_ABI,
     SOUNDARYA_SCORE_ADDRESS,
 } from "@/lib/contracts";
+import { createClient } from "@/lib/supabase/server";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { analysisIdToContractUint } from "@/lib/scans";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -42,7 +44,7 @@ function makeNonce() {
 
 export async function POST(request: NextRequest) {
     try {
-        const { analysisId, walletAddress } = await request.json();
+        const { analysisId, walletAddress, sessionId } = await request.json();
 
         if (!analysisId || !walletAddress) {
             return NextResponse.json(
@@ -50,6 +52,11 @@ export async function POST(request: NextRequest) {
                 { status: 400 },
             );
         }
+
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
         // Fetch analysis data
         const { data: analysisData, error: fetchError } = await supabaseAdmin
@@ -62,6 +69,27 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Analysis not found" },
                 { status: 404 },
+            );
+        }
+
+        if (
+            !hasAnalysisAccess({
+                analysis: analysisData,
+                userId: user?.id,
+                sessionId: typeof sessionId === "string" ? sessionId : null,
+                walletAddress,
+            })
+        ) {
+            return NextResponse.json(
+                { error: "You do not have access to mint this analysis" },
+                { status: 403 },
+            );
+        }
+
+        if (Number(analysisData.unlock_tier ?? 0) <= 0) {
+            return NextResponse.json(
+                { error: "Only unlocked analyses can be minted" },
+                { status: 403 },
             );
         }
 

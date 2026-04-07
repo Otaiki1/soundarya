@@ -15,7 +15,7 @@ function ScoreBar({ label, score, maxScore = 100 }: ScoreBarProps) {
                 <span className="text-text font-light">{label}</span>
                 <span className="text-gold">
                     {score}
-                    <span className="text-muted/60 ml-1">/{maxScore}</span>
+                    <span className="text-muted ml-1">/{maxScore}</span>
                 </span>
             </div>
             <div className="w-full bg-border/20 h-[3px] rounded-full overflow-hidden">
@@ -48,7 +48,7 @@ export function DimensionBars({ analysis }: DimensionBarsProps) {
     return (
         <div className="surface-card p-6 sm:p-8 lg:p-10">
             <div className="mb-8 sm:mb-10">
-                <p className="eyebrow mb-3 opacity-80">Aesthetic Breakdown</p>
+                <p className="eyebrow mb-3">Aesthetic Breakdown</p>
                 <h3 className="font-serif text-2xl lg:text-4xl font-light text-text leading-tight">
                     Beauty <em className="text-gold">Dimensions</em>
                 </h3>
@@ -92,7 +92,7 @@ export function DimensionBars({ analysis }: DimensionBarsProps) {
                     <p className="text-sm leading-relaxed text-text/80 tracking-wide italic">
                         "{analysis.freeTip}"
                     </p>
-                    <div className="mt-5 pt-4 border-t border-gold/10 flex justify-between items-center opacity-60">
+                    <div className="mt-5 pt-4 border-t border-gold/10 flex justify-between items-center">
                         <span className="text-[10px] tracking-[0.2em] uppercase text-gold">
                             Priority Advice
                         </span>
