@@ -1,4 +1,4 @@
-# Soundarya Project Summary
+# Uzoza Project Summary
 
 **Ancient wisdom meets modern science. AI-powered facial beauty analysis for harmony, symmetry, and attractiveness.**
 
@@ -25,7 +25,7 @@
 
 ## Project Overview
 
-**Soundarya** is a sophisticated AI-powered facial aesthetics analysis platform built with Next.js. It blends classical beauty theory, evolutionary psychology, and modern attractiveness science to provide comprehensive facial analysis across 7 distinct dimensions.
+**Uzoza** is a sophisticated AI-powered facial aesthetics analysis platform built with Next.js. It blends classical beauty theory, evolutionary psychology, and modern attractiveness science to provide comprehensive facial analysis across 7 distinct dimensions.
 
 ### Key Objectives
 
@@ -53,9 +53,9 @@ User Upload (Image)
     ↓
 Image Validation & Processing (Sharp)
     ↓
-Upload to Cloudflare R2
+Convert to Base64
     ↓
-AI Analysis (Grok Vision API)
+AI Analysis (Gemini API)
     ↓
 Store Results in Supabase
     ↓
@@ -89,9 +89,8 @@ Optional: Premium Unlock (Stripe)
 ┌─────────────────────────────────────────────────────────────────┐
 │        External Services & Databases                             │
 ├──────────────────┬──────────────┬──────────────┬────────────────┤
-│  Supabase        │  Grok Vision │  Cloudflare  │  Stripe        │
-│  (PostgreSQL)    │  API         │  R2          │  (Payments)    │
-│                  │  (AI Analysis)              │                │
+│  Supabase        │  Gemini API  │  Geolocation │  Stripe        │
+│  (PostgreSQL)    │  (AI Vision) │  Service     │  (Payments)    │
 └──────────────────┴──────────────┴──────────────┴────────────────┘
                            ↓↓↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -108,8 +107,8 @@ Optional: Premium Unlock (Stripe)
 2. **Validation**: Client validates file type and size; API validates on server
 3. **Processing**: Sharp library optimizes image to 1024px max, converts to JPEG
 4. **Rate Limiting**: Server checks IP-based rate limit (3/24h for free tier)
-5. **Storage**: Image uploaded to Cloudflare R2 with temporary key
-6. **AI Analysis**: Base64 image + prompt sent to Grok Vision API
+5. **Base64 Encoding**: Processed buffer is converted to a Base64 string for transmission
+6. **AI Analysis**: Base64 image + prompt sent to Gemini API (2.5-flash)
 7. **Response Parsing**: JSON response validated and transformed
 8. **Database Storage**: Analysis saved to Supabase with scores, metadata
 9. **Geolocation**: IP geolocation enriches analysis with country data
@@ -123,7 +122,7 @@ Optional: Premium Unlock (Stripe)
 
 ### 1. **Facial Analysis Engine**
 
-**Grok AI Vision Analysis** - Comprehensive aesthetic evaluation across 7 dimensions:
+**Gemini AI Vision Analysis** - Comprehensive aesthetic evaluation across 7 dimensions:
 
 - **Overall Score** (1.0-10.0): Composite beauty rating
 - **Symmetry Score** (1-100): Facial symmetry quality
@@ -146,11 +145,11 @@ Optional: Premium Unlock (Stripe)
 
 ### 2. **Image Processing Pipeline**
 
-- **Validation**: Checks file size (max 10MB), type (JPEG/PNG/WEBP), dimensions (200-4096px)
+- **Validation**: Checks file size (max 5MB), type (JPEG/PNG/WEBP), dimensions (200-4096px)
 - **Optimization**: Resizes to max 1024px maintaining aspect ratio, converts to JPEG 85% quality
 - **Metadata Stripping**: Removes EXIF data for privacy
-- **Storage**: Uploads to Cloudflare R2 with temporary expiry (1 hour)
-- **Cleanup**: Automated cron job deletes images after 1 hour
+- **Flow**: Base64 encoded for one-time transmission to AI API; no persistent image storage
+- **Privacy**: Images are not stored on disk or buckets after analysis is complete
 
 ### 3. **Rate Limiting & Anti-Abuse**
 
@@ -226,6 +225,61 @@ Optional: Premium Unlock (Stripe)
 
 ---
 
+## Product Experience & Website Copy
+
+### 1. **Core Messaging & Hero**
+
+**Primary Headline**: "Your face has a score. Most people never find out what it is."
+**Secondary Headline**: "Now you can own yours — permanently."
+**Core Value Prop**: "Uzoza is the only beauty analysis platform that turns a single portrait into a structured, scientific reading — and lets you mint that score as a permanent credential on the Base network. No flattery. No filters. Just the truth, verified and yours forever."
+
+### 2. **The Seven Scientific Dimensions**
+
+The app evaluates portraits against seven pillars of aesthetic science:
+
+1.  **Facial Symmetry**: The bilateral balance of features — the dimension most consistently correlated with attractiveness.
+2.  **Golden Ratio**: Adherence to the 1.618 ratio across facial thirds, eye spacing, and nose width.
+3.  **Bone Structure**: Underlying jawline definition, cheekbone prominence, and chin projection.
+4.  **Feature Harmony**: How well eyes, nose, lips, and jaw function as a unified aesthetic system.
+5.  **Skin Quality**: Tone evenness, texture, and clarity.
+6.  **Sexual Dimorphism**: Strength of masculine or feminine feature markers calibrated to face type.
+7.  **Averageness Index**: Proximity to population-averaged facial geometry (a key evolutionary signal).
+
+### 3. **The User Journey (End-to-End Flow)**
+
+| Stage | Action | App Response / Copy |
+| :--- | :--- | :--- |
+| **01 Frame** | User selects portrait | "Natural light · Front-facing · No filters. The cleaner the photo, the more precise the reading." |
+| **02 Analysis** | AI processes image | "Mapping 68 facial landmarks. Scoring 7 dimensions against established science. Under 60 seconds." |
+| **03 Results** | View score breakdown | "Overall harmony score (1.0–10.0), global percentile, and category (e.g., 'Exceptional')." |
+| **04 Own** | Optional NFT Mint | "Own it forever. Immutable proof that travels with your wallet. Permanent and unalterable on Base." |
+| **05 Compete** | Leaderboard Entry | "Legitimize your rank. Only minted scores enter the global leaderboard, which resets every 7 days for a new epoch of competition." |
+| **06 Optimize** | Premium Insights | "20 personalised observations. Skincare, style notes, and grooming guidance." |
+| **07 Track** | 7-Day Rescan | "Beauty is not static. Unlock a rescan every 7 days to track improvements in sleep, skincare, or lifestyle." |
+
+### 4. **Tiered Access Plans**
+
+**Essential (Free)**
+*   "A first, honest look. See where you actually stand."
+*   *Features*: Overall score, global percentile, symmetry snapshot, 3 strengths, 1 free observation.
+*   *Note*: 3 analyses per day; photo deleted immediately.
+
+**Premium (~$19 / 0.008 ETH)**
+*   "The complete picture. The report worth owning."
+*   *Features*: Full 7-dimension breakdown, 20 personalized tips, skincare/grooming guidance, style notes, downloadable report, rescan eligibility.
+
+**Elite (~$49 / 0.021 ETH)**
+*   "For serious optimisation. Deeper personalisation."
+*   *Features*: Everything in Premium + 3 rescan credits, priority processing, deeper facial structure analysis, personalized improvement roadmap.
+
+### 5. **On-Chain Benefits Copy**
+
+*   **Immutable Proof**: "Your score as you earned it. Written to Base at the moment of minting."
+*   **Travels With Wallet**: "Display on Farcaster, OpenSea, or any dApp that reads wallet contents."
+*   **Real Credentials**: "Your NFT is your entry ticket — proof that your ranking is legitimate."
+
+---
+
 ## Technology Stack
 
 ### Frontend Framework & Runtime
@@ -263,17 +317,10 @@ Optional: Premium Unlock (Stripe)
 
 ### AI & Image Processing
 
-| Technology          | Version | Purpose                         |
-| ------------------- | ------- | ------------------------------- |
-| **Grok Vision API** | Beta    | AI facial analysis engine       |
-| **Sharp**           | 0.34.5  | Image optimization & processing |
-
-### Storage & CDN
-
-| Technology            | Version  | Purpose                     |
-| --------------------- | -------- | --------------------------- |
-| **Cloudflare R2**     | -        | S3-compatible cloud storage |
-| **AWS SDK S3 Client** | 3.1004.0 | R2 client library           |
+| Technology     | Version | Purpose                         |
+| -------------- | ------- | ------------------------------- |
+| **Gemini API** | 2.5     | AI facial analysis engine       |
+| **Sharp**      | 0.34.5  | Image optimization & processing |
 
 ### Development Tools
 
@@ -330,12 +377,7 @@ soundarya/
 │   │   │       └── route.ts     # GET: Fetch challenge details
 │   │   │   └── create/
 │   │   │       └── route.ts     # POST: Create new challenge
-│   │   ├── cleanup/
-│   │   │   └── route.ts         # DELETE: Cleanup old images (cron)
 │   │   ├── countries/           # Get list of countries for UI
-│   │   ├── cron/
-│   │   │   └── cleanup-photos/
-│   │   │       └── route.ts     # Scheduled image deletion
 │   │   ├── health/
 │   │   │   └── route.ts         # Health check endpoint
 │   │   ├── leaderboard/
@@ -398,11 +440,11 @@ soundarya/
 │   └── useToast.tsx             # Toast notifications
 │
 ├── lib/                         # Utility Functions & Libraries
-│   ├── grok.ts                  # Grok Vision API integration
+│   ├── contracts.ts             # Smart contract addresses & helper constants
+│   ├── gemini.ts                # Gemini API integration
 │   ├── image-validation.ts      # Image processing (Sharp)
 │   ├── ip-geolocation.ts        # IP → Country lookup
-│   ├── prompts.ts               # Grok API prompts (free/premium)
-│   ├── r2.ts                    # Cloudflare R2 upload/delete
+│   ├── prompts.ts               # Gemini API prompts (free/premium)
 │   ├── rate-limit.ts            # IP-based rate limiting
 │   ├── session.ts               # Client session management
 │   ├── schema.sql               # Database schema definition
@@ -414,7 +456,7 @@ soundarya/
 │
 ├── types/                        # TypeScript Type Definitions
 │   ├── analysis.ts              # Analysis data models
-│   ├── grok.ts                  # Grok API response types
+│   ├── ai.ts                    # AI API response types (Gemini)
 │   ├── leaderboard.ts           # Leaderboard types
 │   └── user.ts                  # User & auth types
 │
@@ -456,7 +498,7 @@ interface Analysis {
   session_id: string
   ip_hash: string
 
-  // Scores (from Grok AI)
+  // Scores (from Gemini AI)
   overall_score: number (1.0-10.0)
   symmetry_score: number (1-100)
   golden_ratio_score: number (1-100)
@@ -481,7 +523,7 @@ interface Analysis {
   stripe_payment_id?: string
   country_code?: string
   country_name?: string
-  r2_key?: string
+  r2_key?: string -- Legacy: no longer used
   photo_deleted_at?: string
   shared_count: number
   challenge_token?: string
@@ -611,13 +653,12 @@ type LoadingStage =
 3. Check rate limit
 4. Validate image (size, type, dimensions)
 5. Process image (resize, optimize, strip metadata)
-6. Upload to Cloudflare R2
-7. Convert to Base64
-8. Call Grok Vision API with appropriate prompt
-9. Validate response structure and ranges
-10. Save analysis to Supabase
-11. Enrich with geolocation
-12. Return client-safe analysis object
+6. Convert to Base64 for Gemini API
+7. Call Gemini API with appropriate prompt
+8. Validate response structure and ranges
+9. Save analysis to Supabase
+10. Enrich with geolocation
+11. Return client-safe analysis object
 
 ### `/api/analyse/[id]` (GET)
 
@@ -762,17 +803,7 @@ type LoadingStage =
 }
 ```
 
-### `/api/cron/cleanup-photos` (POST)
 
-**Purpose**: Scheduled cleanup of temporary images
-
-**Security**: Requires `CRON_SECRET` header token
-
-**Logic:**
-
-- Finds all temp images in R2 older than 1 hour
-- Deletes from R2 storage
-- Marks in database as deleted
 
 ### `/api/test-db` (GET)
 
@@ -980,7 +1011,7 @@ Providers (Root)
 **Flow:**
 
 1. **Validation** (`validateImage`)
-    - Check file size (≤10MB)
+    - Check file size (≤5MB)
     - Verify MIME type (JPEG/PNG/WEBP)
     - Parse metadata with Sharp
     - Validate dimensions (200-4096px)
@@ -995,15 +1026,12 @@ Providers (Root)
     - Return optimized Buffer
 
 3. **Base64 Encoding** (`imageToBase64`)
-    - Convert Buffer to Base64 string
-    - Prepend MIME type header
-    - Return data URI for API consumption
+    - Convert Buffer to Base64 string for one-time transmission
+    - Prepend MIME type header if needed
+    - Return data for API consumption
 
-4. **Storage** (`uploadToR2`)
-    - Generate unique key: `temp/{timestamp}_{randomId}.jpg`
-    - Upload to Cloudflare R2 bucket
-    - Store metadata (upload time, original filename)
-    - Return public URL and storage key
+4. **Storage (Legacy)**
+    - *Note: Cloudflare R2 storage has been removed in favor of memory-only processing to improve user privacy.*
 
 **Error Handling:**
 
@@ -1013,33 +1041,35 @@ Providers (Root)
 
 ### AI Analysis System
 
-**Grok Vision API Integration:**
+**Gemini API Integration:**
 
 1. **Prompt Selection**
-    - Free tier: `getFreeTierPrompt()` - Returns 9 fields (no premiumTips)
-    - Premium tier: `getPremiumTierPrompt()` - Returns 10 fields including premiumTips
+    - Free tier: `getPromptForTier('free')` - Returns standard analysis fields
+    - Premium tier: `getPromptForTier('premium')` - Includes 20 detailed tips
 
 2. **API Call Structure**
 
     ```typescript
-    fetch("https://api.x.ai/v1/chat/completions", {
-        model: "grok-vision-beta",
-        messages: [
-            { role: "system", content: systemPrompt },
-            {
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+            contents: [{
                 role: "user",
-                content: [
-                    { type: "text", text: userPrompt },
-                    {
-                        type: "image_url",
-                        image_url: { url: base64Image, detail: "high" },
-                    },
-                ],
-            },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
+                parts: [
+                    { text: userPrompt },
+                    { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+                ]
+            }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseJsonSchema: schema,
+                temperature: 0.2
+            }
+        })
     });
     ```
 
@@ -1212,7 +1242,7 @@ const supabaseAdmin = createClient(
 
 ### Row-Level Security (RLS)
 
-While not fully documented in provided files, typical RLS policies for Soundarya would include:
+While not fully documented in provided files, typical RLS policies for Uzoza would include:
 
 - Users can only modify their own profile
 - Analyses are public (readable by all)
@@ -1383,7 +1413,7 @@ CREATE TABLE analyses (
   -- Metadata
   country_code CHAR(2),
   country_name TEXT,
-  r2_key TEXT,
+  r2_key TEXT, -- Legacy: no longer used in Gemini memory-only flow
   photo_deleted_at TIMESTAMPTZ,
   shared_count INTEGER DEFAULT 0,
   challenge_token TEXT UNIQUE,
@@ -1430,8 +1460,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_cron";     -- Scheduled jobs
 - Node.js 18+ LTS
 - npm or yarn
 - Supabase project
-- Grok API key
-- Cloudflare R2 credentials
+- Gemini API key
 - Stripe test keys (optional)
 
 **Environment Variables:**
@@ -1442,15 +1471,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 SUPABASE_SERVICE_ROLE_KEY=xxx
 
-# Grok API
-GROK_API_KEY=xxx
-
-# Cloudflare R2
-CLOUDFLARE_R2_ENDPOINT=https://xxx.r2.cloudflarestorage.com
-CLOUDFLARE_R2_ACCESS_KEY_ID=xxx
-CLOUDFLARE_R2_SECRET_ACCESS_KEY=xxx
-CLOUDFLARE_R2_BUCKET_NAME=xxx
-CLOUDFLARE_R2_PUBLIC_URL=https://cdn.soundarya.ai
+# Gemini API
+GEMINI_API_KEY=xxx
+GEMINI_ANALYSIS_MODEL=gemini-2.5-flash
 
 # Web3
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=xxx
@@ -1509,9 +1532,9 @@ npm run lint       # ESLint check
 ### Performance Optimizations
 
 1. **Image Optimization**
-    - Sharp processing reduces upload bandwidth
-    - R2 storage with CDN caching
-    - Temporary image cleanup (1-hour TTL)
+    - Sharp processing reduces payload size
+    - Memory-only processing (no disk/bucket I/O latency)
+    - Metadata stripping for privacy
 
 2. **API Optimization**
     - Leaderboard materialized view (pre-calculated)
@@ -1587,7 +1610,7 @@ npm run lint       # ESLint check
 
 - Image metadata stripping
 - IP hashing (never store raw IP)
-- Temporary image storage (1-hour TTL)
+- Memory-only processing (no persistent image storage)
 - HTTPS-only communication
 - Database row-level security
 
@@ -1610,9 +1633,9 @@ npm run lint       # ESLint check
 
 ## Conclusion
 
-**Soundarya** is a sophisticated, full-stack next-generation beauty assessment platform that seamlessly blends AI, Web3, and modern UI/UX principles. The architecture prioritizes:
+**Uzoza** is a sophisticated, full-stack next-generation beauty assessment platform that seamlessly blends AI, Web3, and modern UI/UX principles. The architecture prioritizes:
 
-- **User Privacy**: IP hashing, temporary file storage, minimal data retention
+- **User Privacy**: IP hashing, memory-only image processing, minimal data retention
 - **Scalability**: Materialized views, indexed queries, CDN caching
 - **Revenue**: Tiered subscriptions, NFT monetization, future partnerships
 - **Security**: Rate limiting, wallet authentication, cryptographic signatures
@@ -1622,6 +1645,6 @@ The codebase is production-ready, maintainable, and extensible for future featur
 
 ---
 
-**Document Generated**: March 23, 2026  
+**Document Generated**: March 25, 2026  
 **Version**: 1.0  
 **Project Status**: Phase 3 Complete

@@ -1,61 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient, http } from 'viem'
-import { base } from 'viem/chains'
-import { SOUNDARYA_LEADERBOARD_ABI, SOUNDARYA_LEADERBOARD_ADDRESS } from '@/lib/contracts'
-
-const publicClient = createPublicClient({
-  chain: base,
-  transport: http(),
-})
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl
     const type = searchParams.get('type') || 'global'
+    const country = searchParams.get('country')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
 
-    if (type !== 'global') {
+    if (type !== 'global' && type !== 'country') {
       return NextResponse.json(
-        { error: 'Onchain leaderboard currently supports global rankings only.' },
+        { error: 'Invalid type. Must be "global" or "country"' },
         { status: 400 }
       )
     }
 
-    const currentEpoch = await publicClient.readContract({
-      address: SOUNDARYA_LEADERBOARD_ADDRESS,
-      abi: SOUNDARYA_LEADERBOARD_ABI,
-      functionName: 'currentEpoch',
-    })
+    if (type === 'country' && !country) {
+      return NextResponse.json(
+        { error: 'Country code required for country leaderboard' },
+        { status: 400 }
+      )
+    }
 
-    const topUsers = (await publicClient.readContract({
-      address: SOUNDARYA_LEADERBOARD_ADDRESS,
-      abi: SOUNDARYA_LEADERBOARD_ABI,
-      functionName: 'getTopUsers',
-      args: [currentEpoch],
-    })) as readonly [readonly `0x${string}`[], readonly bigint[]]
+    let query = supabaseAdmin
+      .from('leaderboard_daily')
+      .select(`
+        id,
+        overall_score,
+        percentile,
+        category,
+        country_code,
+        created_at,
+        profiles!user_id (
+          display_name
+        )
+      `)
+      .order('overall_score', { ascending: false })
+      .limit(limit)
 
-    const [addresses, scores] = topUsers
+    // Filter by country if specified
+    if (type === 'country' && country) {
+      query = query.eq('country_code', country.toUpperCase())
+    }
 
-    const entries = addresses
-      .map((address, index) => ({
-        address,
-        score: scores[index],
-      }))
-      .filter((entry) => entry.address !== '0x0000000000000000000000000000000000000000')
-      .map((entry, index) => ({
-        rank: index + 1,
-        id: entry.address,
-        overallScore: Number(entry.score) / 10,
-        displayName: `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`,
-        walletAddress: entry.address,
-        minted: true,
-        category: 'Verified entry',
-        createdAt: new Date().toISOString(),
-      }))
+    const { data: leaderboard, error } = await query
 
-    const response = NextResponse.json(entries)
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    if (error) {
+      console.error('Leaderboard query error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch leaderboard' },
+        { status: 500 }
+      )
+    }
+
+    // Transform the data for client response
+    const transformedLeaderboard = leaderboard?.map((entry, index) => ({
+      rank: index + 1,
+      id: entry.id,
+      overallScore: entry.overall_score,
+      percentile: entry.percentile,
+      category: entry.category,
+      countryCode: entry.country_code,
+      displayName: (entry.profiles as any)?.display_name || 'Anonymous',
+      createdAt: entry.created_at
+    })) || []
+
+    // Cache headers: 5 minutes with stale-while-revalidate
+    const response = NextResponse.json(transformedLeaderboard)
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
 
     return response
+
   } catch (error) {
     console.error('Leaderboard API error:', error)
     return NextResponse.json(

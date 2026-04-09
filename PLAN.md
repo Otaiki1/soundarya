@@ -1,7 +1,7 @@
-# Soundarya Platform Upgrade Implementation Plan
+# Uzoza Platform Upgrade Implementation Plan
 
 ## Overview
-This plan upgrades Soundarya from the current 7-dimension scan flow into the newer onchain-aware product shape: 9-dimension analysis, relayer-backed scan attestations, email delivery, merged scan history, ETH-priced unlock tiers, and a rebuilt profile/dashboard experience. The work is staged so data model and API changes land before UI features that depend on them.
+This plan upgrades Uzoza from the current 7-dimension scan flow into the newer onchain-aware product shape: 9-dimension analysis, relayer-backed scan attestations, email delivery, merged scan history, ETH-priced unlock tiers, and a rebuilt profile/dashboard experience. The work is staged so data model and API changes land before UI features that depend on them.
 
 ## Goals
 - Upgrade the analysis engine and storage model to the new 9-dimension schema.

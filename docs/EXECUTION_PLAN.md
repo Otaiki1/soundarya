@@ -1,4 +1,4 @@
-# SOUNDARYA — Execution Plan
+# UZOZA — Execution Plan
 ## 📋 Complete Build Roadmap
 
 > **Last Updated:** March 9, 2026  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document provides a **phase-by-phase execution roadmap** for building Soundarya. Each phase is broken into specific, actionable tasks with clear acceptance criteria. Follow this in sequence. **The technical document is the source of truth** — refer to it for any implementation details.
+This document provides a **phase-by-phase execution roadmap** for building Uzoza. Each phase is broken into specific, actionable tasks with clear acceptance criteria. Follow this in sequence. **The technical document is the source of truth** — refer to it for any implementation details.
 
 ---
 
@@ -898,4 +898,4 @@ By launch, you should have:
 
 ---
 
-*Soundarya Execution Plan · v1.0 · Follow this to build successfully.*
+*Uzoza Execution Plan · v1.0 · Follow this to build successfully.*
