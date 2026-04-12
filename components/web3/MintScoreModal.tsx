@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAccount, useBalance } from "wagmi";
+import { formatEther } from "viem";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useMintScore } from "@/hooks/useMintScore";
+import {
+    SOUNDARYA_CHAIN_ID,
+    SOUNDARYA_SCORE_ABI,
+    SOUNDARYA_SCORE_ADDRESS,
+} from "@/lib/contracts";
 import type { AnalysisPublic } from "@/types/analysis";
 
 type MintState = "CONNECT" | "CONFIRM" | "MINTING" | "SUCCESS";
@@ -20,28 +25,25 @@ export function MintScoreModal({
     analysis,
 }: MintScoreModalProps) {
     const { address, isConnected } = useAccount();
-    const { data: balance } = useBalance({ address, chainId: 8453 });
-    const [state, setState] = useState<MintState>("CONNECT");
+    const { data: balance } = useBalance({ address, chainId: SOUNDARYA_CHAIN_ID });
+    const { data: mintPriceWei } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "mintPrice",
+    });
     const { mint, isLoading, isSuccess, error, txHash } = useMintScore();
 
-    const MINT_PRICE = "0.001";
-    const MINT_PRICE_USD = "3.50"; // Updated based on ETH price
-
-    useEffect(() => {
-        if (isConnected) {
-            setState("CONFIRM");
-        } else {
-            setState("CONNECT");
-        }
-    }, [isConnected]);
-
-    useEffect(() => {
-        if (isLoading) {
-            setState("MINTING");
-        } else if (isSuccess) {
-            setState("SUCCESS");
-        }
-    }, [isLoading, isSuccess]);
+    const mintPriceEth =
+        typeof mintPriceWei === "bigint"
+            ? formatEther(mintPriceWei)
+            : "…";
+    const state: MintState = isSuccess
+        ? "SUCCESS"
+        : isLoading
+          ? "MINTING"
+          : isConnected
+            ? "CONFIRM"
+            : "CONNECT";
 
     const handleMint = async () => {
         if (analysis.id) {
@@ -51,10 +53,8 @@ export function MintScoreModal({
 
     const handleClose = () => {
         if (state === "SUCCESS") {
-            setState("CONNECT");
             onClose();
         } else if (state !== "MINTING") {
-            setState("CONNECT");
             onClose();
         }
     };
@@ -114,10 +114,10 @@ export function MintScoreModal({
                                     Mint Price
                                 </p>
                                 <p className="font-serif text-xl text-gold">
-                                    {MINT_PRICE} ETH
+                                    {mintPriceEth} ETH
                                 </p>
                                 <p className="text-[11px] text-muted/70 mt-1">
-                                    (~${MINT_PRICE_USD})
+                                    Pulled live from the contract on Base
                                 </p>
                             </div>
 
@@ -307,7 +307,7 @@ export function MintScoreModal({
                                 >
                                     {isLoading
                                         ? "Minting..."
-                                        : `Mint for ${MINT_PRICE} ETH`}
+                                        : `Mint for ${mintPriceEth} ETH`}
                                 </button>
                                 <button
                                     onClick={handleClose}

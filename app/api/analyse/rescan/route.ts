@@ -3,6 +3,7 @@ import { createPublicClient, http } from "viem";
 import { createStoredAnalysis, deriveIpHash } from "@/lib/analysis-service";
 import { SOUNDARYA_CHAIN, SOUNDARYA_RPC_URL, SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from "@/lib/contracts";
 import { getCountryFromIP, extractIPFromRequest } from "@/lib/ip-geolocation";
+import { hasAnalysisAccess } from "@/lib/analysis-access";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -26,9 +27,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { data: previousAnalysis } = await supabaseAdmin
       .from("analyses")
-      .select("*")
+      .select("id, user_id, session_id, wallet_address, unlock_tier")
       .eq("id", previousAnalysisId)
       .single();
 
@@ -36,6 +42,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Previous analysis not found" },
         { status: 404 },
+      );
+    }
+
+    if (
+      !hasAnalysisAccess({
+        analysis: previousAnalysis,
+        userId: user?.id,
+        sessionId,
+        walletAddress,
+      })
+    ) {
+      return NextResponse.json(
+        { error: "You do not have access to rescan this analysis" },
+        { status: 403 },
       );
     }
 
@@ -65,10 +85,6 @@ export async function POST(request: NextRequest) {
 
     const ipHash = await deriveIpHash(clientIP);
     const country = await getCountryFromIP(clientIP);
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
     const nextTier =
       Number(previousAnalysis.unlock_tier ?? 0) >= 3 ? "elite" : "premium";
@@ -84,7 +100,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      previous: previousAnalysis,
+      previous: {
+        id: previousAnalysis.id,
+        unlockTier: Number(previousAnalysis.unlock_tier ?? 0),
+      },
       current,
     });
   } catch (error) {

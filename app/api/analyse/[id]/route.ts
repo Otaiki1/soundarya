@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import {
+  PERSONALIZED_PREMIUM_HOOK,
+  personalizeReportList,
+  personalizeReportText,
+} from '@/lib/report-copy'
 import { createClient } from '@/lib/supabase/server'
 
 interface RouteParams {
@@ -18,7 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check if user is authenticated
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     let analysis
 
@@ -78,11 +83,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       dimorphismScore: analysis.dimorphism_score,
       percentile: analysis.percentile,
       category: analysis.category,
-      summary: analysis.summary,
-      strengths: analysis.strengths,
+      summary: personalizeReportText(analysis.summary),
+      strengths: personalizeReportList(analysis.strengths),
       weakestDimension: analysis.weakest_dimension,
-      freeTip: analysis.free_tip,
-      premiumHook: analysis.premium_hook,
+      freeTip: personalizeReportText(analysis.free_tip),
+      premiumHook: PERSONALIZED_PREMIUM_HOOK,
       countryCode: analysis.country_code,
       createdAt: analysis.created_at,
       // Only include premium tips if user has paid (check payment status)

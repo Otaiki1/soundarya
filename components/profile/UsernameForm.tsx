@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 import { SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from "@/lib/contracts";
 
 interface UsernameFormProps {
@@ -12,13 +13,15 @@ export function UsernameForm({ currentUsername }: UsernameFormProps) {
   const [username, setUsername] = useState(currentUsername || "");
   const [status, setStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [error, setError] = useState<string | null>(null);
+  const { ensureBaseMainnet } = useBaseMainnetGuard();
 
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  const displayStatus =
+    !username || username === currentUsername ? "idle" : status;
 
   useEffect(() => {
     if (!username || username === currentUsername) {
-      setStatus("idle");
       return;
     }
 
@@ -34,24 +37,34 @@ export function UsernameForm({ currentUsername }: UsernameFormProps) {
 
   const handleSubmit = async () => {
     setError(null);
-    const response = await fetch("/api/username/set", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    });
+    try {
+      await ensureBaseMainnet();
 
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error || "Unable to update username");
-      return;
+      const response = await fetch("/api/username/set", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Unable to update username");
+        return;
+      }
+
+      writeContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "setUsername",
+        args: [username],
+      });
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Unable to update username",
+      );
     }
-
-    writeContract({
-      address: SOUNDARYA_SCORE_ADDRESS,
-      abi: SOUNDARYA_SCORE_ABI,
-      functionName: "setUsername",
-      args: [username],
-    });
   };
 
   return (
@@ -78,11 +91,11 @@ export function UsernameForm({ currentUsername }: UsernameFormProps) {
         </button>
       </div>
       <p className="mt-3 text-xs">
-        {status === "checking" ? "Checking availability..." : null}
-        {status === "available" ? (
+        {displayStatus === "checking" ? "Checking availability..." : null}
+        {displayStatus === "available" ? (
           <span className="text-gold">Available</span>
         ) : null}
-        {status === "taken" ? <span className="text-red-400">Taken</span> : null}
+        {displayStatus === "taken" ? <span className="text-red-400">Taken</span> : null}
         {isConfirmed ? <span className="text-gold"> · Onchain updated</span> : null}
       </p>
       {error ? <p className="mt-2 text-xs text-red-400">{error}</p> : null}

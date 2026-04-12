@@ -1,11 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { formatEther } from "viem";
+import { useAccount, useReadContract } from "wagmi";
 import { Navbar } from "@/components/ui/Navbar";
 import { DowntimeModal } from "@/components/ui/DowntimeModal";
 import { AnalysisModal } from "@/components/upload/AnalysisModal";
 import { storeScanRecord } from "@/lib/scans";
+import {
+    SOUNDARYA_SCORE_ABI,
+    SOUNDARYA_SCORE_ADDRESS,
+} from "@/lib/contracts";
 import { getOrCreateSessionId } from "@/lib/session";
 import type { AnalysisPublic } from "@/types/analysis";
 
@@ -104,12 +110,13 @@ const plans = [
             "1 free improvement observation",
         ],
         cta: "Start here — no wallet required",
-        footnote: "3 analyses per day · Photo deleted immediately",
+        footnote:
+            "3 free analyses per calendar month (UTC) · Same limit for this browser or your connected wallet · Photo deleted immediately",
     },
     {
         name: "Premium",
         label: "The full reading",
-        price: "~$19 · Paid in ETH",
+        price: "Paid in ETH on Base",
         description:
             "The complete picture. Every dimension explained, every weakness identified, every observation made actionable. This is the report worth owning.",
         features: [
@@ -121,14 +128,14 @@ const plans = [
             "Downloadable report",
             "Rescan eligibility after 7 days",
         ],
-        cta: "Unlock Premium · ~0.008 ETH",
-        footnote: "Paid in ETH on Base · Dollar equivalent shown at checkout",
+        cta: "Unlock Premium",
+        footnote: "Contract price on Base · USD estimate from live ETH",
         featured: true,
     },
     {
         name: "Elite",
         label: "For serious optimisation",
-        price: "~$49 · Paid in ETH",
+        price: "Paid in ETH on Base",
         description:
             "Everything in Premium, plus deeper personalisation, priority processing, and three rescan credits included.",
         features: [
@@ -139,7 +146,7 @@ const plans = [
             "Deeper facial structure analysis",
             "Personalised improvement roadmap",
         ],
-        cta: "Unlock Elite · ~0.021 ETH",
+        cta: "Unlock Elite",
     },
 ];
 
@@ -188,13 +195,75 @@ function SectionHeader({
 }
 
 export default function Home() {
+    const { address } = useAccount();
+    const { data: unlockPriceWei } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "unlockPrice",
+    });
+    const { data: premiumPriceWei } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "premiumPrice",
+    });
+    const { data: elitePriceWei } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "elitePrice",
+    });
+    const { data: mintPriceWei } = useReadContract({
+        address: SOUNDARYA_SCORE_ADDRESS,
+        abi: SOUNDARYA_SCORE_ABI,
+        functionName: "mintPrice",
+    });
+
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState<AnalysisPublic | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [activeHeroImage, setActiveHeroImage] = useState(0);
     const [downtimeOpen, setDowntimeOpen] = useState(false);
+    const [ethPriceUsd, setEthPriceUsd] = useState<number | null>(null);
+    const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const contractEthLabels = useMemo(() => {
+        const asWei = (v: unknown): bigint | undefined =>
+            typeof v === "bigint" ? v : undefined;
+        const eth = (wei: bigint | undefined) =>
+            typeof wei === "bigint" ? Number(formatEther(wei)).toFixed(4) : null;
+        const usd = (wei: bigint | undefined) => {
+            if (typeof wei !== "bigint" || ethPriceUsd == null) return null;
+            return Math.round(Number(formatEther(wei)) * ethPriceUsd);
+        };
+        return {
+            unlock: eth(asWei(unlockPriceWei)),
+            premium: eth(asWei(premiumPriceWei)),
+            elite: eth(asWei(elitePriceWei)),
+            mint: eth(asWei(mintPriceWei)),
+            unlockUsd: usd(asWei(unlockPriceWei)),
+            premiumUsd: usd(asWei(premiumPriceWei)),
+            eliteUsd: usd(asWei(elitePriceWei)),
+            mintUsd: usd(asWei(mintPriceWei)),
+        };
+    }, [
+        elitePriceWei,
+        ethPriceUsd,
+        mintPriceWei,
+        premiumPriceWei,
+        unlockPriceWei,
+    ]);
+
+    useEffect(() => {
+        void fetch("/api/eth-price")
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (typeof data?.priceUsd === "number") {
+                    setEthPriceUsd(data.priceUsd);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         const interval = window.setInterval(() => {
@@ -211,12 +280,16 @@ export default function Home() {
         setIsUploading(true);
         setIsModalOpen(true);
         setResult(null);
+        setQuotaNotice(null);
 
         try {
             const sessionId = getOrCreateSessionId();
             const formData = new FormData();
             formData.append("photo", file);
             formData.append("sessionId", sessionId);
+            if (address) {
+                formData.append("walletAddress", address);
+            }
 
             const response = await fetch("/api/analyse", {
                 method: "POST",
@@ -236,6 +309,13 @@ export default function Home() {
                     }
                 } catch {
                     // Ignore JSON parse errors and keep the fallback message.
+                }
+
+                if (response.status === 429 || errorCode === "FREE_QUOTA_EXCEEDED") {
+                    setIsModalOpen(false);
+                    setUploadedFile(null);
+                    setQuotaNotice(message);
+                    return;
                 }
 
                 if (response.status === 503 || errorCode === "ORACLE_UNAVAILABLE") {
@@ -271,6 +351,22 @@ export default function Home() {
         <div className="min-h-screen bg-deep text-text">
             <Navbar />
 
+            {quotaNotice ? (
+                <div
+                    role="alert"
+                    className="fixed inset-x-0 top-20 z-40 mx-auto max-w-2xl border border-amber-400/35 bg-amber-950/90 px-5 py-4 text-center text-sm text-amber-100 shadow-lg backdrop-blur-md sm:top-24"
+                >
+                    {quotaNotice}
+                    <button
+                        type="button"
+                        onClick={() => setQuotaNotice(null)}
+                        className="ml-3 underline decoration-amber-400/50 hover:decoration-amber-200"
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            ) : null}
+
             <main className="relative overflow-hidden">
                 <div className="pointer-events-none absolute inset-0">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(201,169,110,0.08),transparent_22%),radial-gradient(circle_at_84%_14%,rgba(229,190,132,0.12),transparent_18%),radial-gradient(circle_at_72%_60%,rgba(188,137,76,0.08),transparent_24%)]" />
@@ -282,40 +378,42 @@ export default function Home() {
                             AI Analysis · Onchain Proof · Base Network
                         </p>
                         <h1 className="font-serif text-[clamp(3.2rem,7vw,6.9rem)] font-light leading-[0.9] tracking-[-0.06em] text-text">
-                            Your face has a score.
+                            See your face the way science does.
                             <span className="mt-2 block">
-                                Most people never find out what it is.
+                                Clear scores, percentiles, and what to improve next.
                             </span>
                         </h1>
                         <p className="mt-6 font-serif text-[clamp(1.65rem,3vw,2.4rem)] italic leading-tight text-gold-bright">
-                            Now you can own yours — permanently.
+                            Honest analysis first — optional proof on Base when you are ready.
                         </p>
                         <p className="mt-8 max-w-2xl text-[1.03rem] leading-8 text-soft">
-                            Uzoza is the only beauty analysis platform that
-                            turns a single portrait into a structured, scientific
-                            reading — and lets you mint that score as a permanent
-                            credential on the Base network. No flattery. No
-                            filters. Just the truth, verified and yours forever.
+                            Upload one portrait and get a structured reading across nine
+                            dimensions — symmetry, harmony, proportionality, bone structure,
+                            skin, and more — with a global percentile and strengths you can
+                            act on. Your photo is deleted right after the run. When you want
+                            permanence, mint your score as a credential on Base.
                         </p>
 
-                        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                        <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-center">
                             <button
+                                type="button"
                                 onClick={() => scrollToSection("upload")}
-                                className="btn-gold"
+                                className="btn-gold-hero"
                             >
-                                → Upload Your Portrait
+                                → Get your free analysis
                             </button>
                             <button
+                                type="button"
                                 onClick={() => scrollToSection("plans")}
-                                className="btn-secondary"
+                                className="btn-secondary-hero"
                             >
-                                → See Access Plans
+                                → Compare plans
                             </button>
                         </div>
 
                         <div className="mt-10 border-t border-gold/12 pt-6 text-[0.72rem] uppercase tracking-[0.2em] text-soft">
-                            ✦ Results in under 60 seconds · ✦ Photo deleted
-                            immediately after · ✦ Score minted on Base · ✦ No
+                            ✦ Results in under 60 seconds · ✦ 3 free analyses per month
+                            (wallet or this browser) · ✦ Photo deleted after analysis · ✦ No
                             account required to start
                         </div>
                     </div>
@@ -577,8 +675,14 @@ export default function Home() {
                                 </article>
                             ))}
                             <div className="border border-gold/18 bg-gold/6 px-6 py-5 text-[0.76rem] uppercase tracking-[0.18em] text-gold-light">
-                                Mint price: 0.001 ETH · Base network · Gas under
-                                $0.01 · Score stored permanently onchain
+                                Mint price:{" "}
+                                {contractEthLabels.mint
+                                    ? `${contractEthLabels.mint} ETH`
+                                    : "… ETH"}{" "}
+                                {contractEthLabels.mintUsd != null
+                                    ? `(~$${contractEthLabels.mintUsd}) `
+                                    : ""}
+                                · Base · Score stored permanently onchain
                             </div>
                         </div>
                     </div>
@@ -684,7 +788,26 @@ export default function Home() {
                     />
 
                     <div className="mt-14 grid gap-6 xl:grid-cols-3">
-                        {plans.map((plan) => (
+                        {plans.map((plan) => {
+                            const isPremium = plan.name === "Premium";
+                            const isElite = plan.name === "Elite";
+                            const displayPrice =
+                                isPremium && contractEthLabels.premium
+                                    ? contractEthLabels.premiumUsd != null
+                                        ? `~$${contractEthLabels.premiumUsd} · ~${contractEthLabels.premium} ETH`
+                                        : `~${contractEthLabels.premium} ETH`
+                                    : isElite && contractEthLabels.elite
+                                      ? contractEthLabels.eliteUsd != null
+                                          ? `~$${contractEthLabels.eliteUsd} · ~${contractEthLabels.elite} ETH`
+                                          : `~${contractEthLabels.elite} ETH`
+                                      : plan.price;
+                            const displayCta =
+                                isPremium && contractEthLabels.premium
+                                    ? `Unlock Premium · ~${contractEthLabels.premium} ETH`
+                                    : isElite && contractEthLabels.elite
+                                      ? `Unlock Elite · ~${contractEthLabels.elite} ETH`
+                                      : plan.cta;
+                            return (
                             <article
                                 key={plan.name}
                                 className={`flex flex-col border p-8 ${
@@ -701,7 +824,7 @@ export default function Home() {
                                         {plan.name}
                                     </h3>
                                     <p className="mt-5 font-serif text-[2.9rem] font-light leading-none text-gold-bright">
-                                        {plan.price}
+                                        {displayPrice}
                                     </p>
                                     {plan.featured ? (
                                         <div className="mt-4 inline-flex border border-gold/20 px-3 py-2 text-[0.66rem] uppercase tracking-[0.2em] text-gold-light">
@@ -727,10 +850,11 @@ export default function Home() {
                                 </ul>
 
                                 <button
+                                    type="button"
                                     onClick={() => scrollToSection("upload")}
                                     className={plan.featured ? "btn-gold mt-10" : "btn-secondary mt-10"}
                                 >
-                                    {plan.cta}
+                                    {displayCta}
                                 </button>
 
                                 {plan.footnote ? (
@@ -739,7 +863,8 @@ export default function Home() {
                                     </p>
                                 ) : null}
                             </article>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <p className="mt-10 max-w-5xl text-[0.96rem] leading-8 text-soft">
@@ -751,10 +876,15 @@ export default function Home() {
                     <div className="mt-6 border border-gold/12 bg-surface/36 p-6 text-[0.92rem] leading-8 text-soft">
                         Want to own your result onchain?
                         <br />
-                        Add an NFT mint for 0.001 ETH — roughly $2–3 at current
-                        ETH price. Your score, all nine dimensions, and your
-                        percentile are written permanently to Base. Required for
-                        leaderboard entry.
+                        Mint is typically{" "}
+                        {contractEthLabels.mint
+                            ? `${contractEthLabels.mint} ETH`
+                            : "a small ETH amount"}{" "}
+                        {contractEthLabels.mintUsd != null
+                            ? `(~$${contractEthLabels.mintUsd} at today's ETH) `
+                            : ""}
+                        from the live contract on Base. Your score and dimensions are
+                        written permanently. Required for leaderboard entry.
                     </div>
                 </section>
 
@@ -831,8 +961,15 @@ export default function Home() {
                                         20 observations, all dimensions explained,
                                         and your improvement roadmap.
                                     </p>
-                                    <button className="btn-gold mt-6">
-                                        → Unlock Premium · ~0.008 ETH
+                                    <button
+                                        type="button"
+                                        className="btn-gold mt-6"
+                                        onClick={() => scrollToSection("upload")}
+                                    >
+                                        → Unlock Premium
+                                        {contractEthLabels.premium
+                                            ? ` · ~${contractEthLabels.premium} ETH`
+                                            : ""}
                                     </button>
                                 </div>
                             </div>
@@ -900,8 +1037,11 @@ export default function Home() {
                                 Your score is ready. Want to own it permanently?
                             </p>
                             <p className="mt-3 text-[0.92rem] leading-8 text-soft/78">
-                                Mint to Base for 0.001 ETH → permanently yours,
-                                forever provable.
+                                Mint to Base for{" "}
+                                {contractEthLabels.mint
+                                    ? `${contractEthLabels.mint} ETH`
+                                    : "the live mint price"}{" "}
+                                → permanently yours, forever provable.
                             </p>
                         </div>
                     </div>

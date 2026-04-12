@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from '@/lib/contracts'
+import { SOUNDARYA_CHAIN, SOUNDARYA_RPC_URL, SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from '@/lib/contracts'
 import { createPublicClient, http, parseEventLogs, type Hex } from 'viem'
-import { base } from 'viem/chains'
 
 const publicClient = createPublicClient({
-  chain: base,
-  transport: http(),
+  chain: SOUNDARYA_CHAIN,
+  transport: http(SOUNDARYA_RPC_URL),
 })
 
 export async function POST(req: Request) {
@@ -15,7 +14,6 @@ export async function POST(req: Request) {
       hash: rawHash,
       txHash,
       type: rawType,
-      userId,
       analysisId,
       walletAddress,
     } = await req.json()
@@ -33,6 +31,17 @@ export async function POST(req: Request) {
 
     if (receipt.status !== 'success') {
       return NextResponse.json({ error: 'Transaction failed' }, { status: 400 })
+    }
+
+    const touchesScoreContract = receipt.logs.some(
+      (log) => log.address.toLowerCase() === SOUNDARYA_SCORE_ADDRESS.toLowerCase(),
+    )
+
+    if (!touchesScoreContract) {
+      return NextResponse.json(
+        { error: 'Transaction was not executed against the Soundarya score contract' },
+        { status: 400 },
+      )
     }
 
     const decodedLogs = parseEventLogs({
@@ -59,14 +68,11 @@ export async function POST(req: Request) {
           ? subscribedEvent.args.user
           : walletAddress ?? null
 
-      let profileUpdated = false
-      if (userId) {
-        const { error } = await supabaseAdmin
-          .from('profiles')
-          .update({ subscription_tier: 'premium' })
-          .eq('id', userId)
-
-        profileUpdated = !error
+      if (!subscribedEvent) {
+        return NextResponse.json(
+          { error: 'Subscription event not found for this transaction' },
+          { status: 400 },
+        )
       }
 
       return NextResponse.json({
@@ -76,7 +82,6 @@ export async function POST(req: Request) {
         verified: Boolean(subscribedEvent),
         walletAddress: subscribedWallet,
         expiry,
-        profileUpdated,
       })
     }
 
@@ -84,6 +89,13 @@ export async function POST(req: Request) {
       const mintEvent = decodedLogs.find((log) => log.eventName === 'ScoreMinted')
       const tokenId =
         typeof mintEvent?.args?.tokenId === 'bigint' ? mintEvent.args.tokenId.toString() : null
+
+      if (!mintEvent) {
+        return NextResponse.json(
+          { error: 'Mint event not found for this transaction' },
+          { status: 400 },
+        )
+      }
 
       let mintRecorded = false
       try {

@@ -6,11 +6,13 @@ import {
   useWriteContract,
 } from "wagmi";
 import { SOUNDARYA_SCORE_ABI, SOUNDARYA_SCORE_ADDRESS } from "@/lib/contracts";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 import { analysisIdToContractUint } from "@/lib/scans";
 import { getOrCreateSessionId } from "@/lib/session";
 
 export function useUnlockReport() {
   const { address, isConnected } = useAccount();
+  const { ensureBaseMainnet } = useBaseMainnetGuard();
   const [pendingMeta, setPendingMeta] = useState<{
     analysisId: string;
     tier: 1 | 2 | 3;
@@ -59,6 +61,8 @@ export function useUnlockReport() {
     if (!isConnected) {
       throw new Error("Wallet not connected");
     }
+
+    await ensureBaseMainnet();
 
     const value =
       tier === 3 ? elitePrice : tier === 2 ? premiumPrice : unlockPrice;

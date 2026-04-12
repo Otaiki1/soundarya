@@ -1,18 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasAnalysisAccess } from "@/lib/analysis-access";
+import {
+  PERSONALIZED_PREMIUM_HOOK,
+  personalizeReportList,
+  personalizeReportText,
+} from "@/lib/report-copy";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function buildReportEmail(analysis: Record<string, any>, unlockTier: number) {
-  const strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
+interface ReportEmailAnalysis {
+  overall_score: number | string;
+  category: string;
+  summary?: string | null;
+  strengths?: string[] | null;
+  free_tip?: string | null;
+  premium_tips?: string[] | null;
+  citations?: string[] | null;
+}
+
+function buildReportEmail(analysis: ReportEmailAnalysis, unlockTier: number) {
+  const strengths = personalizeReportList(analysis.strengths);
   const citations = Array.isArray(analysis.citations) ? analysis.citations : [];
-  const premiumTips = Array.isArray(analysis.premium_tips)
-    ? analysis.premium_tips
-    : [];
+  const premiumTips = personalizeReportList(analysis.premium_tips);
+  const summary = personalizeReportText(analysis.summary);
+  const freeTip = personalizeReportText(analysis.free_tip);
 
   const title =
     unlockTier >= 2 ? "Your full Uzoza report" : "Your Uzoza summary";
@@ -23,12 +38,12 @@ function buildReportEmail(analysis: Record<string, any>, unlockTier: number) {
         <p style="letter-spacing:0.24em; text-transform:uppercase; font-size:11px; color:#c9a96e;">Uzoza</p>
         <h1 style="font-size:36px; font-weight:400; margin:12px 0 8px;">${title}</h1>
         <p style="font-size:18px; margin:0 0 24px;">Score ${Number(analysis.overall_score).toFixed(1)} · ${analysis.category}</p>
-        <p style="line-height:1.8; color:#ddcdb5;">${analysis.summary}</p>
+        <p style="line-height:1.8; color:#ddcdb5;">${summary}</p>
         <h2 style="font-size:22px; font-weight:400; margin-top:28px;">Top strengths</h2>
         <ul style="padding-left:18px; color:#ddcdb5;">
           ${strengths.slice(0, 3).map((item: string) => `<li style="margin:8px 0;">${item}</li>`).join("")}
         </ul>
-        <p style="margin-top:24px; color:#ddcdb5;"><strong>Free tip:</strong> ${analysis.free_tip}</p>
+        <p style="margin-top:24px; color:#ddcdb5;"><strong>Free tip:</strong> ${freeTip}</p>
         ${
           unlockTier >= 2
             ? `
@@ -44,7 +59,7 @@ function buildReportEmail(analysis: Record<string, any>, unlockTier: number) {
               }
             `
             : `
-              <p style="margin-top:28px; color:#ddcdb5;">Unlock Premium to receive all nine dimensions, your weaknesses, named citations, and personalised next steps.</p>
+              <p style="margin-top:28px; color:#ddcdb5;">${PERSONALIZED_PREMIUM_HOOK}</p>
             `
         }
       </div>

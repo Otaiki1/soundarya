@@ -5,6 +5,7 @@ import {
     useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseEther } from "viem";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 import { SOUNDARYA_SCORE_ADDRESS, SOUNDARYA_SCORE_ABI } from "@/lib/contracts";
 import { getOrCreateSessionId } from "@/lib/session";
 
@@ -36,6 +37,7 @@ interface UseMintScoreResult {
 
 export function useMintScore(): UseMintScoreResult {
     const { address, isConnected } = useAccount();
+    const { ensureBaseMainnet } = useBaseMainnetGuard();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [txHash, setTxHash] = useState<string | null>(null);
@@ -128,6 +130,7 @@ export function useMintScore(): UseMintScoreResult {
                 return;
             }
 
+            await ensureBaseMainnet();
             setIsLoading(true);
             setError(null);
             setIsSuccess(false);
@@ -198,7 +201,7 @@ export function useMintScore(): UseMintScoreResult {
                 setIsLoading(false);
             }
         },
-        [isConnected, address, writeContract],
+        [address, ensureBaseMainnet, isConnected, writeContract],
     );
 
     return {

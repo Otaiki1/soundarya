@@ -5,6 +5,7 @@ import {
     useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseEther } from "viem";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 
 interface MintSignatureResponse {
     signature: string;
@@ -39,6 +40,7 @@ interface NFTMintResult {
 
 export function useNFTMint(analysisId: string) {
     const { address, isConnected } = useAccount();
+    const { ensureBaseMainnet } = useBaseMainnetGuard();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [txHash, setTxHash] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function useNFTMint(analysisId: string) {
             return {};
         }
 
+        await ensureBaseMainnet();
         setIsLoading(true);
         setError(null);
 
@@ -195,7 +198,7 @@ export function useNFTMint(analysisId: string) {
             setIsLoading(false);
             return {};
         }
-    }, [isConnected, address, analysisId, writeContract, receipt]);
+    }, [address, analysisId, ensureBaseMainnet, isConnected, receipt, txHash, writeContract]);
 
     return {
         mint,

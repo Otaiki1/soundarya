@@ -8,17 +8,19 @@ import {
   SOUNDARYA_SCORE_ABI,
   SOUNDARYA_SCORE_ADDRESS,
 } from "@/lib/contracts";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 import { getStoredScans, removeStoredScans } from "@/lib/scans";
 
 export function ClaimScans() {
   const { address, isConnected } = useAccount();
+  const { ensureBaseMainnet, isOnBaseMainnet } = useBaseMainnetGuard();
   const publicClient = usePublicClient({ chainId: SOUNDARYA_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
   const [message, setMessage] = useState<string | null>(null);
   const attemptedWalletRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isConnected || !address || !publicClient) return;
+    if (!isConnected || !address || !publicClient || !isOnBaseMainnet) return;
     if (attemptedWalletRef.current === address.toLowerCase()) return;
 
     const scans = getStoredScans();
@@ -77,6 +79,7 @@ export function ClaimScans() {
           }
 
           try {
+            await ensureBaseMainnet();
             const txHash = await writeContractAsync({
               address: SOUNDARYA_SCORE_ADDRESS,
               abi: SOUNDARYA_SCORE_ABI,
@@ -107,7 +110,7 @@ export function ClaimScans() {
         console.warn("Claim scan sync failed:", error);
       }
     })();
-  }, [address, isConnected, publicClient, writeContractAsync]);
+  }, [address, ensureBaseMainnet, isConnected, isOnBaseMainnet, publicClient, writeContractAsync]);
 
   if (!message) return null;
 

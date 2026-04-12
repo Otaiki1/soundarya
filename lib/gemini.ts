@@ -1,4 +1,9 @@
 import { getPromptForTier, type CalibrationMode } from "./prompts";
+import {
+  personalizeImprovementPredictions,
+  personalizeReportList,
+  personalizeReportText,
+} from "./report-copy";
 import type {
   AIAnalysisResult,
   AnalysisTier,
@@ -23,6 +28,10 @@ function isRetryableGeminiStatus(status: number): boolean {
   return status === 400 || status === 401 || status === 403 || status === 429 || status >= 500;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function getGeminiApiKeys(): string[] {
   const multiKeyValue = process.env.GEMINI_API_KEYS ?? "";
   const parsedMultiKeys = multiKeyValue
@@ -40,11 +49,29 @@ export function getGeminiApiKeys(): string[] {
   );
 }
 
+export function getGeminiModels(): string[] {
+  const explicitModels = (process.env.GEMINI_ANALYSIS_MODELS ?? "")
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const primaryModel = process.env.GEMINI_ANALYSIS_MODEL?.trim();
+
+  return Array.from(
+    new Set([
+      ...explicitModels,
+      ...(primaryModel ? [primaryModel] : []),
+      "gemini-2.5-flash",
+      "gemini-1.5-flash",
+    ]),
+  );
+}
+
 export async function generateGeminiContent(
   body: Record<string, unknown>,
-  model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash",
+  model?: string,
 ): Promise<Response> {
   const apiKeys = getGeminiApiKeys();
+  const models = model ? [model] : getGeminiModels();
 
   if (apiKeys.length === 0) {
     throw new Error("No Gemini API keys are configured");
@@ -54,44 +81,61 @@ export async function generateGeminiContent(
   let lastResponse: Response | null = null;
   let lastError: unknown = null;
 
-  for (const [index, apiKey] of apiKeys.entries()) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
+  for (const [modelIndex, candidateModel] of models.entries()) {
+    for (const [keyIndex, apiKey] of apiKeys.entries()) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: requestBody,
           },
-          body: requestBody,
-        },
-      );
+        );
 
-      if (response.ok) {
-        return response;
+        if (response.ok) {
+          return response;
+        }
+
+        lastResponse = response;
+
+        const hasNextKey = keyIndex < apiKeys.length - 1;
+        const hasNextModel = modelIndex < models.length - 1;
+        if (!isRetryableGeminiStatus(response.status) || (!hasNextKey && !hasNextModel)) {
+          return response;
+        }
+
+        const nextHint = hasNextKey
+          ? `backup API key ${keyIndex + 2}/${apiKeys.length}`
+          : `fallback model ${modelIndex + 2}/${models.length}`;
+        console.warn(
+          `Gemini request failed with status ${response.status} on model ${candidateModel}. Retrying with ${nextHint}.`,
+        );
+
+        if (response.status >= 500 || response.status === 429) {
+          await sleep(300);
+        }
+      } catch (error) {
+        lastError = error;
+        const hasNextKey = keyIndex < apiKeys.length - 1;
+        const hasNextModel = modelIndex < models.length - 1;
+
+        if (!hasNextKey && !hasNextModel) {
+          throw error;
+        }
+
+        const nextHint = hasNextKey
+          ? `backup API key ${keyIndex + 2}/${apiKeys.length}`
+          : `fallback model ${modelIndex + 2}/${models.length}`;
+        console.warn(
+          `Gemini request threw before completion on model ${candidateModel}. Retrying with ${nextHint}.`,
+          error,
+        );
+        await sleep(300);
       }
-
-      lastResponse = response;
-
-      if (!isRetryableGeminiStatus(response.status) || index === apiKeys.length - 1) {
-        return response;
-      }
-
-      console.warn(
-        `Gemini request failed with status ${response.status}. Retrying with backup API key ${index + 2}/${apiKeys.length}.`,
-      );
-    } catch (error) {
-      lastError = error;
-
-      if (index === apiKeys.length - 1) {
-        throw error;
-      }
-
-      console.warn(
-        `Gemini request threw before completion. Retrying with backup API key ${index + 2}/${apiKeys.length}.`,
-        error,
-      );
     }
   }
 
@@ -236,9 +280,16 @@ function deriveCategory(overallScore: number): ScoreCategory {
   return "Below Average";
 }
 
-function normalizeFaceArchetype(value: string): string {
-  const normalized = value.trim().toLowerCase().replace(/[_-]+/g, " ");
-  return FACE_ARCHETYPE_ALIASES[normalized] ?? value;
+function normalizeFaceArchetype(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const normalized = trimmed.toLowerCase().replace(/[_-]+/g, " ");
+  return FACE_ARCHETYPE_ALIASES[normalized] ?? trimmed;
 }
 
 function getDimensionScores(result: AIAnalysisResult): number[] {
@@ -395,15 +446,27 @@ function extractOutputText(payload: unknown): string | null {
     const parts = (candidate as { content?: { parts?: unknown } }).content?.parts;
     if (!Array.isArray(parts)) continue;
 
+    const chunks: string[] = [];
     for (const part of parts) {
       const text = (part as { text?: unknown }).text;
-      if (typeof text === "string" && text.trim()) {
-        return text;
+      if (typeof text === "string" && text.length > 0) {
+        chunks.push(text);
       }
+    }
+    const joined = chunks.join("").trim();
+    if (joined) {
+      return joined;
     }
   }
 
   return null;
+}
+
+function getGeminiFinishReason(payload: unknown): string | undefined {
+  const candidates = (payload as { candidates?: unknown }).candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
+  const reason = (candidates[0] as { finishReason?: unknown }).finishReason;
+  return typeof reason === "string" ? reason : undefined;
 }
 
 function extractJsonCandidate(text: string): string | null {
@@ -530,12 +593,12 @@ function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
         : parsed.confidenceScore,
     executiveSummary:
       typeof parsed.executiveSummary === "string"
-        ? parsed.executiveSummary.trim()
+        ? personalizeReportText(parsed.executiveSummary.trim())
         : parsed.executiveSummary,
-    strengths: sanitizeStringArray(parsed.strengths, 7),
-    weaknesses: sanitizeStringArray(parsed.weaknesses, 5),
-    tradeoffs: sanitizeStringArray(parsed.tradeoffs, 8),
-    premiumTips: sanitizeStringArray(parsed.premiumTips, 20),
+    strengths: personalizeReportList(sanitizeStringArray(parsed.strengths, 7)),
+    weaknesses: personalizeReportList(sanitizeStringArray(parsed.weaknesses, 5)),
+    tradeoffs: personalizeReportList(sanitizeStringArray(parsed.tradeoffs, 8)),
+    premiumTips: personalizeReportList(sanitizeStringArray(parsed.premiumTips, 20)),
     citations: sanitizeStringArray(parsed.citations, 20),
     weakestDimension:
       typeof normalizedWeakest === "string" &&
@@ -544,33 +607,35 @@ function normalizeAnalysisResult(parsed: AIAnalysisResult): AIAnalysisResult {
         : inferWeakestDimension(parsed),
     freeTip:
       typeof parsed.freeTip === "string"
-        ? parsed.freeTip.trim()
+        ? personalizeReportText(parsed.freeTip.trim())
         : parsed.freeTip,
     improvementPredictions: Array.isArray(parsed.improvementPredictions)
-      ? parsed.improvementPredictions.slice(0, 6).map((prediction) => ({
-          change:
-            typeof prediction.change === "string"
-              ? prediction.change.trim()
-              : prediction.change,
-          deltaScore:
-            typeof prediction.deltaScore === "number"
-              ? roundToTenth(prediction.deltaScore)
-              : prediction.deltaScore,
-          affectedDimensions: Array.isArray(prediction.affectedDimensions)
-            ? prediction.affectedDimensions
-                .map((dimension) =>
-                  typeof dimension === "string"
-                    ? normalizeDimensionLabel(dimension)
-                    : dimension,
-                )
-                .filter((dimension): dimension is string => typeof dimension === "string")
-            : prediction.affectedDimensions,
-          timeframe:
-            typeof prediction.timeframe === "string"
-              ? prediction.timeframe.trim()
-              : prediction.timeframe,
-          difficulty: prediction.difficulty,
-        }))
+      ? personalizeImprovementPredictions(
+          parsed.improvementPredictions.slice(0, 6).map((prediction) => ({
+            change:
+              typeof prediction.change === "string"
+                ? prediction.change.trim()
+                : prediction.change,
+            deltaScore:
+              typeof prediction.deltaScore === "number"
+                ? roundToTenth(prediction.deltaScore)
+                : prediction.deltaScore,
+            affectedDimensions: Array.isArray(prediction.affectedDimensions)
+              ? prediction.affectedDimensions
+                  .map((dimension) =>
+                    typeof dimension === "string"
+                      ? normalizeDimensionLabel(dimension)
+                      : dimension,
+                  )
+                  .filter((dimension): dimension is string => typeof dimension === "string")
+              : prediction.affectedDimensions,
+            timeframe:
+              typeof prediction.timeframe === "string"
+                ? prediction.timeframe.trim()
+                : prediction.timeframe,
+            difficulty: prediction.difficulty,
+          })),
+        )
       : parsed.improvementPredictions,
   };
 }
@@ -828,14 +893,21 @@ function stripDataUrlPrefix(imageBase64: string): string {
   return commaIndex >= 0 ? imageBase64.slice(commaIndex + 1) : imageBase64;
 }
 
+/** Room for long strings (summaries, strengths, tips) without mid-JSON truncation. */
+function maxAnalysisOutputTokens(tier: AnalysisTier): number {
+  return tier === "elite" ? 12288 : 8192;
+}
+
 async function runGeminiAnalysisAttempt(
   imageBase64: string,
   mimeType: string,
   tier: AnalysisTier,
   calibrationMode: CalibrationMode,
+  outputRetry = false,
 ): Promise<GeminiAPIResponse> {
   const prompt = getPromptForTier(tier, calibrationMode);
-  const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
+  const baseCap = maxAnalysisOutputTokens(tier);
+  const maxOutputTokens = outputRetry ? Math.min(16384, baseCap * 2) : baseCap;
 
   const response = await generateGeminiContent(
     {
@@ -860,22 +932,21 @@ async function runGeminiAnalysisAttempt(
         responseMimeType: "application/json",
         responseJsonSchema: getAnalysisSchema(tier),
         temperature: calibrationMode === "strictRetry" ? 0.1 : 0.2,
-        maxOutputTokens: tier === "elite" ? 2600 : 2200,
+        maxOutputTokens,
       },
     },
-    model,
   );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: {
-          error: `Gemini API error: ${response.status} ${response.statusText}`,
-          status: response.status,
-          code:
-            typeof errorData?.error?.status === "string"
-              ? errorData.error.status
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    return {
+      success: false,
+      error: {
+        error: `Gemini API error: ${response.status} ${response.statusText}`,
+        status: response.status,
+        code:
+          typeof errorData?.error?.status === "string"
+            ? errorData.error.status
             : undefined,
       },
     };
@@ -896,7 +967,25 @@ async function runGeminiAnalysisAttempt(
   const parsed = tryParseJson(outputText);
 
   if (!parsed) {
-    console.error("Gemini JSON parse failure. Raw output:", outputText);
+    const finishReason = getGeminiFinishReason(data);
+    console.error(
+      "Gemini JSON parse failure. finishReason:",
+      finishReason ?? "(none)",
+      "maxOutputTokens:",
+      maxOutputTokens,
+      "raw prefix:",
+      outputText.slice(0, 800),
+    );
+    if (!outputRetry && finishReason === "MAX_TOKENS") {
+      console.warn("Gemini hit MAX_TOKENS; retrying once with a higher output cap.");
+      return runGeminiAnalysisAttempt(
+        imageBase64,
+        mimeType,
+        tier,
+        calibrationMode,
+        true,
+      );
+    }
     return {
       success: false,
       error: { error: "Failed to parse Gemini response as JSON" },
@@ -988,7 +1077,6 @@ export async function testGeminiAPI(): Promise<{
       return { available: false, error: "No Gemini API keys are configured" };
     }
 
-    const model = process.env.GEMINI_ANALYSIS_MODEL || "gemini-2.5-flash";
     const response = await generateGeminiContent(
       {
         contents: [
@@ -1001,7 +1089,6 @@ export async function testGeminiAPI(): Promise<{
           maxOutputTokens: 10,
         },
       },
-      model,
     );
 
     if (response.ok) {

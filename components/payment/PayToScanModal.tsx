@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useAccount, useBalance } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useMintScore } from "@/hooks/useMintScore";
+import { SOUNDARYA_CHAIN_ID } from "@/lib/contracts";
 
 type ModalState = "CONNECT" | "CONFIRM" | "PAYING" | "SUCCESS";
 
@@ -19,28 +19,18 @@ export function PayToScanModal({
     onSuccess,
 }: PayToScanModalProps) {
     const { address, isConnected } = useAccount();
-    const { data: balance } = useBalance({ address, chainId: 8453 }); // Base chain ID
-    const [state, setState] = useState<ModalState>("CONNECT");
+    const { data: balance } = useBalance({ address, chainId: SOUNDARYA_CHAIN_ID });
     const { mint, isLoading, isSuccess, error, txHash } = useMintScore();
 
     const SCAN_PRICE = "0.001";
     const SCAN_PRICE_USD = "3.50";
-
-    useEffect(() => {
-        if (isConnected) {
-            setState("CONFIRM");
-        } else {
-            setState("CONNECT");
-        }
-    }, [isConnected]);
-
-    useEffect(() => {
-        if (isLoading) {
-            setState("PAYING");
-        } else if (isSuccess) {
-            setState("SUCCESS");
-        }
-    }, [isLoading, isSuccess]);
+    const state: ModalState = isSuccess
+        ? "SUCCESS"
+        : isLoading
+          ? "PAYING"
+          : isConnected
+            ? "CONFIRM"
+            : "CONNECT";
 
     const handlePay = async () => {
         // In the new flow, we mint based on a specific analysisId.
@@ -50,10 +40,8 @@ export function PayToScanModal({
 
     const handleClose = () => {
         if (state === "SUCCESS") {
-            setState("CONNECT");
             onSuccess();
         } else if (state !== "PAYING") {
-            setState("CONNECT");
             onClose();
         }
     };

@@ -1,11 +1,12 @@
 import { randomUUID } from "crypto";
-import { checkRateLimit, hashIP } from "@/lib/rate-limit";
+import { checkMonthlyFreeQuota, hashIP } from "@/lib/rate-limit";
 import { analyseWithGemini, isGeminiServiceUnavailableError } from "@/lib/gemini";
 import {
   imageToBase64,
   processImageForAnalysis,
   validateImage,
 } from "@/lib/image-validation";
+import { PERSONALIZED_PREMIUM_HOOK } from "@/lib/report-copy";
 import { computeScanHash } from "@/lib/scans";
 import { attestScanOnchain, persistRelayerTx } from "@/lib/relayer";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -16,6 +17,8 @@ interface CreateAnalysisParams {
   photo: File;
   sessionId: string;
   ipHash: string;
+  /** Set for free-tier uploads so monthly quota can be enforced server-side. */
+  freeQuotaKeyHash?: string;
   countryCode?: string;
   countryName?: string;
   userId?: string | null;
@@ -79,8 +82,7 @@ function toPublicAnalysis(
     createdAt,
     goldenRatioScore: analysis.proportionalityScore,
     summary: analysis.executiveSummary,
-    premiumHook:
-      "Unlock the extended report to see weaknesses, citations, and practical next-step guidance.",
+    premiumHook: PERSONALIZED_PREMIUM_HOOK,
   };
 }
 
@@ -88,6 +90,7 @@ export async function createStoredAnalysis({
   photo,
   sessionId,
   ipHash,
+  freeQuotaKeyHash,
   countryCode,
   countryName,
   userId,
@@ -157,6 +160,9 @@ export async function createStoredAnalysis({
     scan_hash: scanHash,
     photo_deleted_at: createdAt,
     created_at: createdAt,
+    ...(tier === "free" && freeQuotaKeyHash
+      ? { free_quota_key: freeQuotaKeyHash }
+      : {}),
   };
 
   const { error } = await supabaseAdmin.from("analyses").insert(insertPayload);
@@ -191,8 +197,8 @@ export async function createStoredAnalysis({
   );
 }
 
-export async function ensureRateLimit(ipHash: string) {
-  const rateLimitResult = await checkRateLimit(ipHash);
+export async function ensureMonthlyFreeQuota(freeQuotaKeyHash: string) {
+  const rateLimitResult = await checkMonthlyFreeQuota(freeQuotaKeyHash);
   if (!rateLimitResult.allowed) {
     return rateLimitResult;
   }

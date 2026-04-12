@@ -1,5 +1,16 @@
+import { personalizeReportText } from "@/lib/report-copy";
+
+interface ScanHistoryAnalysis {
+  id: string;
+  overall_score: number;
+  category: string;
+  summary: string;
+  created_at: string;
+  unlock_tier?: number | null;
+}
+
 interface ScanHistoryProps {
-  analyses: Array<Record<string, any>>;
+  analyses: ScanHistoryAnalysis[];
 }
 
 export function ScanHistory({ analyses }: ScanHistoryProps) {
@@ -30,7 +41,7 @@ export function ScanHistory({ analyses }: ScanHistoryProps) {
           <div>
             <p className="font-serif text-2xl text-text">{analysis.category}</p>
             <p className="mt-2 text-sm leading-relaxed text-soft">
-              {analysis.summary}
+              {personalizeReportText(analysis.summary)}
             </p>
           </div>
           <div className="text-right text-xs text-muted">

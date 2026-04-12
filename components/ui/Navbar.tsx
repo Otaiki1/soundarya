@@ -1,8 +1,24 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+const NavbarConnectButton = dynamic(
+    () =>
+        import("@/components/web3/NavbarConnectButton").then((m) => ({
+            default: m.NavbarConnectButton,
+        })),
+    {
+        ssr: false,
+        loading: () => (
+            <div
+                className="h-10 min-w-[148px] animate-pulse rounded-sm border border-gold/15 bg-white/[0.04]"
+                aria-hidden
+            />
+        ),
+    },
+);
 
 export function Navbar() {
     const pathname = usePathname();
@@ -64,11 +80,7 @@ export function Navbar() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <ConnectButton
-                        showBalance={false}
-                        chainStatus="none"
-                        accountStatus="address"
-                    />
+                    <NavbarConnectButton />
                 </div>
             </div>
         </nav>

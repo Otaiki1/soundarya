@@ -1,10 +1,8 @@
-import { base, baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import SoundaryaScoreAbi from "./abi/SoundaryaScore.json";
 import SoundaryaLeaderboardAbi from "./abi/SoundaryaLeaderboard.json";
 
-const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "8453");
-
-export const SOUNDARYA_CHAIN = chainId === 84532 ? baseSepolia : base;
+export const SOUNDARYA_CHAIN = base;
 export const SOUNDARYA_CHAIN_ID = SOUNDARYA_CHAIN.id;
 export const SOUNDARYA_RPC_URL =
   process.env.BASE_RPC_URL || process.env.NEXT_PUBLIC_BASE_RPC_URL;

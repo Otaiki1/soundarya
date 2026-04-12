@@ -1,5 +1,5 @@
 import { http, createConfig } from "wagmi";
-import { base, baseSepolia } from "wagmi/chains";
+import { base } from "wagmi/chains";
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
 import {
     injectedWallet,
@@ -40,12 +40,11 @@ const connectors = walletConnectProjectId
       );
 
 export const config = createConfig({
-    chains: [base, baseSepolia],
+    chains: [base],
     connectors,
     multiInjectedProviderDiscovery: false,
     transports: {
         [base.id]: http(SOUNDARYA_RPC_URL),
-        [baseSepolia.id]: http(SOUNDARYA_RPC_URL),
     },
     ssr: true,
 });

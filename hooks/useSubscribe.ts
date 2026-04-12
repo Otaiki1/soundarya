@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBaseMainnetGuard } from "@/hooks/useBaseMainnetGuard";
 import { SOUNDARYA_SCORE_ADDRESS, SOUNDARYA_SCORE_ABI } from "@/lib/contracts";
 
 interface UseSubscribeResult {
@@ -18,6 +19,7 @@ interface UseSubscribeResult {
 
 export function useSubscribe(): UseSubscribeResult {
     const { address, isConnected } = useAccount();
+    const { ensureBaseMainnet } = useBaseMainnetGuard();
     const queryClient = useQueryClient();
     
     const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +155,7 @@ export function useSubscribe(): UseSubscribeResult {
             return;
         }
 
+        await ensureBaseMainnet();
         setIsLoading(true);
         setError(null);
         setIsSuccess(false);
@@ -164,7 +167,7 @@ export function useSubscribe(): UseSubscribeResult {
             functionName: "subscribeWeekly",
             value: weeklyPrice as bigint,
         });
-    }, [isConnected, address, writeContract, weeklyPrice]);
+    }, [address, ensureBaseMainnet, isConnected, weeklyPrice, writeContract]);
 
     const subscribeMonthly = useCallback(async () => {
         if (!isConnected || !address) {
@@ -176,6 +179,7 @@ export function useSubscribe(): UseSubscribeResult {
             return;
         }
 
+        await ensureBaseMainnet();
         setIsLoading(true);
         setError(null);
         setIsSuccess(false);
@@ -187,7 +191,7 @@ export function useSubscribe(): UseSubscribeResult {
             functionName: "subscribeMonthly",
             value: monthlyPrice as bigint,
         });
-    }, [isConnected, address, writeContract, monthlyPrice]);
+    }, [address, ensureBaseMainnet, isConnected, monthlyPrice, writeContract]);
 
     return {
         subscribeWeekly,

@@ -1,73 +1,126 @@
-import { supabaseAdmin } from './supabase/admin'
+import { getAddress, isAddress } from "viem";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const FREE_ANALYSES_PER_DAY = 3
-const WINDOW_MS = 24 * 60 * 60 * 1000 // 24 hours
+export const FREE_ANALYSES_PER_MONTH = 3;
 
 export interface RateLimitResult {
-  allowed: boolean
-  remaining: number
-  retryAfter?: number
+  allowed: boolean;
+  remaining: number;
+  retryAfter?: number;
+  resetsAt?: string;
+}
+
+export function getUtcMonthWindow(): {
+  monthStartIso: string;
+  nextMonthStartIso: string;
+  retryAfterMs: number;
+} {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const monthStart = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+  const nextMonthStart = new Date(Date.UTC(y, m + 1, 1, 0, 0, 0, 0));
+  return {
+    monthStartIso: monthStart.toISOString(),
+    nextMonthStartIso: nextMonthStart.toISOString(),
+    retryAfterMs: Math.max(0, nextMonthStart.getTime() - now.getTime()),
+  };
 }
 
 /**
- * Check rate limit for an IP address
- * Free tier: 3 analyses per IP per 24 hours
- *
- * @param ipHash - Hashed IP address (SHA-256)
- * @returns Rate limit status and remaining analyses
+ * Stable identity for free-tier quota: logged-in user > connected wallet > browser session.
  */
-export async function checkRateLimit(ipHash: string): Promise<RateLimitResult> {
+export function buildFreeQuotaRawKey(params: {
+  userId?: string | null;
+  walletAddress?: string | null;
+  sessionId: string;
+}): string {
+  if (params.userId) {
+    return `user:${params.userId}`;
+  }
+  const trimmed = params.walletAddress?.trim();
+  if (trimmed && isAddress(trimmed)) {
+    return `wallet:${getAddress(trimmed).toLowerCase()}`;
+  }
+  return `session:${params.sessionId}`;
+}
+
+export async function hashFreeQuotaKey(raw: string): Promise<string> {
   try {
-    const windowStart = new Date(Date.now() - WINDOW_MS).toISOString()
+    const encoder = new TextEncoder();
+    const salt = process.env.CRON_SECRET || "soundarya-default-salt";
+    const data = encoder.encode(`free-quota:v1:${raw}:${salt}`);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return hashHex.slice(0, 32);
+  } catch (error) {
+    console.error("[Rate Limit] Error hashing free quota key:", error);
+    return btoa(raw).slice(0, 32);
+  }
+}
 
-    // Count analyses from this IP in the last 24 hours
-    const { count } = await supabaseAdmin
-      .from('analyses')
-      .select('id', { count: 'exact', head: true })
-      .eq('ip_hash', ipHash)
-      .gt('created_at', windowStart)
+/**
+ * Free tier: up to FREE_ANALYSES_PER_MONTH analyses per calendar month (UTC)
+ * per quota key (wallet, session, or auth user).
+ */
+export async function checkMonthlyFreeQuota(
+  freeQuotaKeyHash: string,
+): Promise<RateLimitResult> {
+  const { monthStartIso, nextMonthStartIso, retryAfterMs } = getUtcMonthWindow();
 
-    const used = count || 0
-    const remaining = Math.max(0, FREE_ANALYSES_PER_DAY - used)
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("analyses")
+      .select("id", { count: "exact", head: true })
+      .eq("free_quota_key", freeQuotaKeyHash)
+      .gte("created_at", monthStartIso);
+
+    if (error) {
+      console.error("[Rate Limit] Error checking monthly free quota:", error);
+      return {
+        allowed: true,
+        remaining: FREE_ANALYSES_PER_MONTH - 1,
+      };
+    }
+
+    const used = count ?? 0;
+    const remaining = Math.max(0, FREE_ANALYSES_PER_MONTH - used);
 
     if (remaining === 0) {
       return {
         allowed: false,
         remaining: 0,
-        retryAfter: WINDOW_MS,
-      }
+        retryAfter: retryAfterMs,
+        resetsAt: nextMonthStartIso,
+      };
     }
 
     return {
       allowed: true,
       remaining: remaining - 1,
-    }
+      resetsAt: nextMonthStartIso,
+    };
   } catch (error) {
-    console.error('[Rate Limit] Error checking rate limit:', error)
-    // On error, allow the request (don't block due to service error)
+    console.error("[Rate Limit] Error checking monthly free quota:", error);
     return {
       allowed: true,
-      remaining: FREE_ANALYSES_PER_DAY - 1,
-    }
+      remaining: FREE_ANALYSES_PER_MONTH - 1,
+    };
   }
 }
 
-/**
- * Hash an IP address for storage (never store raw IPs)
- * Uses SHA-256 with a salt from environment
- */
 export async function hashIP(ip: string): Promise<string> {
   try {
-    const encoder = new TextEncoder()
-    const salt = process.env.CRON_SECRET || 'soundarya-default-salt'
-    const data = encoder.encode(ip + salt)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-    return hashHex.slice(0, 16) // Use first 16 chars
+    const encoder = new TextEncoder();
+    const salt = process.env.CRON_SECRET || "soundarya-default-salt";
+    const data = encoder.encode(ip + salt);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return hashHex.slice(0, 16);
   } catch (error) {
-    console.error('[Rate Limit] Error hashing IP:', error)
-    // Fallback: simple hash
-    return btoa(ip).slice(0, 16)
+    console.error("[Rate Limit] Error hashing IP:", error);
+    return btoa(ip).slice(0, 16);
   }
 }

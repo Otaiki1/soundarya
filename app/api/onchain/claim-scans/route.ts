@@ -4,10 +4,13 @@ export async function POST(_request: NextRequest) {
   try {
     return NextResponse.json(
       {
-        error:
+        linkedCount: 0,
+        claimedScanHashes: [],
+        maintenance: true,
+        message:
           "Scan claiming is temporarily disabled until a signed ownership proof is implemented.",
       },
-      { status: 501 },
+      { status: 200 },
     );
   } catch (error) {
     console.error("Claim scans route error:", error);

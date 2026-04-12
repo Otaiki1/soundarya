@@ -41,8 +41,7 @@ export async function GET(request: Request) {
 
   checks.chain_configured =
     !!process.env.NEXT_PUBLIC_SCORE_NFT_ADDRESS &&
-    !!process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS &&
-    !!process.env.NEXT_PUBLIC_CHAIN_ID
+    !!process.env.NEXT_PUBLIC_LEADERBOARD_ADDRESS
 
   checks.signers_configured =
     !!process.env.MINTER_PRIVATE_KEY &&

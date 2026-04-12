@@ -139,8 +139,16 @@ body::before {
     @apply inline-flex items-center justify-center border border-gold/45 bg-[linear-gradient(90deg,rgba(177,126,65,0.92),rgba(240,208,153,0.98))] px-7 py-4 text-[0.72rem] uppercase tracking-[0.3em] text-deep transition duration-300 hover:brightness-110;
   }
 
+  .btn-gold-hero {
+    @apply inline-flex min-h-[3.5rem] min-w-[min(100%,18rem)] items-center justify-center border border-gold/45 bg-[linear-gradient(90deg,rgba(177,126,65,0.92),rgba(240,208,153,0.98))] px-10 py-5 text-[0.82rem] font-medium uppercase tracking-[0.26em] text-deep shadow-[0_12px_40px_rgba(201,169,110,0.22)] transition duration-300 hover:brightness-110 sm:min-w-[20rem];
+  }
+
   .btn-secondary {
     @apply inline-flex items-center justify-center border border-gold/28 bg-transparent px-7 py-4 text-[0.72rem] uppercase tracking-[0.3em] text-gold-light transition duration-300 hover:border-gold/45 hover:bg-gold/8;
+  }
+
+  .btn-secondary-hero {
+    @apply inline-flex min-h-[3.5rem] min-w-[min(100%,14rem)] items-center justify-center border border-gold/32 bg-transparent px-8 py-5 text-[0.78rem] uppercase tracking-[0.26em] text-gold-light transition duration-300 hover:border-gold/45 hover:bg-gold/8;
   }
 
   .btn-primary {

@@ -2,8 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-function dedupeAnalyses(rows: Record<string, any>[]) {
-  const map = new Map<string, Record<string, any>>();
+interface ScoreHistoryAnalysis {
+  id: string;
+  overall_score: number;
+  category: string;
+  summary: string;
+  created_at: string;
+  unlock_tier: number | null;
+}
+
+const SCORE_HISTORY_FIELDS =
+  "id, overall_score, category, summary, created_at, unlock_tier";
+
+function dedupeAnalyses(rows: ScoreHistoryAnalysis[]) {
+  const map = new Map<string, ScoreHistoryAnalysis>();
   for (const row of rows) {
     map.set(row.id, row);
   }
@@ -22,41 +34,49 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const queries: Array<Promise<{ data: Record<string, any>[] | null }>> = [];
+    const ownProfile = user?.id
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("wallet_address")
+          .eq("id", user.id)
+          .maybeSingle()
+      : null;
+
+    const normalizedWalletAddress = walletAddress?.toLowerCase() ?? null;
+    const canViewRequestedWallet =
+      Boolean(user?.id) &&
+      Boolean(normalizedWalletAddress) &&
+      ownProfile?.data?.wallet_address?.toLowerCase() === normalizedWalletAddress;
+
+    const queries: Array<Promise<{ data: ScoreHistoryAnalysis[] | null }>> = [];
 
     if (user?.id) {
       queries.push(
-        Promise.resolve(
-          supabaseAdmin
-            .from("analyses")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false }),
-        ),
+        supabaseAdmin
+          .from("analyses")
+          .select(SCORE_HISTORY_FIELDS)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       );
     }
 
-    if (walletAddress) {
+    if (normalizedWalletAddress && canViewRequestedWallet) {
       queries.push(
-        Promise.resolve(
-          supabaseAdmin
-            .from("analyses")
-            .select("*")
-            .eq("wallet_address", walletAddress.toLowerCase())
-            .order("created_at", { ascending: false }),
-        ),
+        supabaseAdmin
+          .from("analyses")
+          .select(SCORE_HISTORY_FIELDS)
+          .eq("wallet_address", normalizedWalletAddress)
+          .order("created_at", { ascending: false }),
       );
     }
 
     if (sessionId) {
       queries.push(
-        Promise.resolve(
-          supabaseAdmin
-            .from("analyses")
-            .select("*")
-            .eq("session_id", sessionId)
-            .order("created_at", { ascending: false }),
-        ),
+        supabaseAdmin
+          .from("analyses")
+          .select(SCORE_HISTORY_FIELDS)
+          .eq("session_id", sessionId)
+          .order("created_at", { ascending: false }),
       );
     }
 

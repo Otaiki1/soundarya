@@ -1,12 +1,15 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { formatEther } from 'viem'
 import { useSubscribe } from '@/hooks/useSubscribe'
 import { useUnlockReport } from '@/hooks/useUnlockReport'
 import { BeautyAssistant } from '@/components/assistant/BeautyAssistant'
 import { CitationsBlock } from '@/components/results/CitationsBlock'
 import { EmailCapture } from '@/components/results/EmailCapture'
 import { ImprovementPredictions } from '@/components/results/ImprovementPredictions'
+import { MintScoreModal } from '@/components/web3/MintScoreModal'
 import type { AnalysisPublic } from '@/types/analysis'
 import { getOrCreateSessionId } from '@/lib/session'
 
@@ -27,12 +30,6 @@ const STAGES = [
   'Writing your report',
 ]
 
-const TIER_OPTIONS = [
-  { tier: 1 as const, label: 'Unlock Report', usd: 3 },
-  { tier: 2 as const, label: 'Full Premium', usd: 10 },
-  { tier: 3 as const, label: 'Elite', usd: 25 },
-]
-
 export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: AnalysisModalProps) {
   const [visibleStageIndex, setVisibleStageIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>('')
@@ -40,7 +37,8 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [resolvedAnalysis, setResolvedAnalysis] = useState<AnalysisPublic | null>(analysisResult)
   const { isSubscribed } = useSubscribe()
-  const { unlock, isPending, isConfirmed } = useUnlockReport()
+  const { unlock, isPending, isConfirmed, prices } = useUnlockReport()
+  const [mintModalOpen, setMintModalOpen] = useState(false)
 
   useEffect(() => {
     setResolvedAnalysis(analysisResult)
@@ -103,6 +101,16 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
   const unlockTier = resolvedAnalysis?.unlockTier ?? 0
   const hasPremium = isSubscribed || unlockTier >= 2 || resolvedAnalysis?.premiumUnlocked
   const hasElite = unlockTier >= 3
+
+  const tierOptions = useMemo(
+    () =>
+      [
+        { tier: 1 as const, label: 'Unlock Report', wei: prices.unlockPrice },
+        { tier: 2 as const, label: 'Full Premium', wei: prices.premiumPrice },
+        { tier: 3 as const, label: 'Elite', wei: prices.elitePrice },
+      ] as const,
+    [prices.elitePrice, prices.premiumPrice, prices.unlockPrice],
+  )
 
   if (!isOpen) return null
 
@@ -281,8 +289,14 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                       Fixed dollar amounts. Live ETH estimate shown using the current market price.
                     </p>
                     <div className="grid gap-3">
-                      {TIER_OPTIONS.map((option) => {
-                        const ethAmount = ethPrice ? (option.usd / ethPrice).toFixed(4) : "..."
+                      {tierOptions.map((option) => {
+                        const wei = option.wei
+                        const ethStr =
+                          typeof wei === 'bigint' ? Number(formatEther(wei)).toFixed(4) : '…'
+                        const usdStr =
+                          typeof wei === 'bigint' && ethPrice
+                            ? `~$${Math.round(Number(formatEther(wei)) * ethPrice)}`
+                            : null
                         return (
                           <button
                             key={option.tier}
@@ -291,7 +305,9 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                             className="flex flex-col gap-1 border border-gold/20 bg-deep/40 px-5 py-4 text-left transition-colors hover:border-gold/40 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-row sm:items-center sm:justify-between"
                           >
                             <span className="font-serif text-xl text-gold-light">{option.label}</span>
-                            <span className="text-sm text-soft">~{ethAmount} ETH · ${option.usd}</span>
+                            <span className="text-sm text-soft">
+                              ~{ethStr} ETH{usdStr ? ` · ${usdStr}` : ''} · contract price
+                            </span>
                           </button>
                         )
                       })}
@@ -304,6 +320,36 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
                     </button>
                   </div>
                 )}
+
+                {resolvedAnalysis.persisted !== false ? (
+                  <div className="border border-gold/25 bg-[rgba(201,169,106,0.06)] p-6">
+                    <h3 className="font-serif text-2xl text-gold-light mb-2">Own it onchain</h3>
+                    <p className="text-sm text-muted leading-relaxed mb-5">
+                      Unlock any paid tier above, then mint your score as an NFT on Base — permanent proof for leaderboards and your wallet. You can also open the full report page to share or mint from there.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        href={`/analyse/${resolvedAnalysis.id}`}
+                        className="btn-secondary inline-flex items-center justify-center text-[0.65rem] uppercase tracking-[0.22em]"
+                      >
+                        Open full report
+                      </Link>
+                      {unlockTier > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setMintModalOpen(true)}
+                          className="btn-primary text-[0.65rem] uppercase tracking-[0.22em]"
+                        >
+                          Mint on Base
+                        </button>
+                      ) : (
+                        <p className="self-center text-[11px] uppercase tracking-[0.16em] text-soft/70">
+                          Mint unlocks after a paid tier
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </>
           )}
@@ -327,6 +373,13 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
         isOpen={assistantOpen}
         onClose={() => setAssistantOpen(false)}
       />
+      {resolvedAnalysis ? (
+        <MintScoreModal
+          isOpen={mintModalOpen}
+          onClose={() => setMintModalOpen(false)}
+          analysis={resolvedAnalysis}
+        />
+      ) : null}
     </>
   )
 }

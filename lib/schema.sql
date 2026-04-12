@@ -184,3 +184,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER analyses_update_profile
   AFTER INSERT ON public.analyses
   FOR EACH ROW EXECUTE FUNCTION update_profile_best_score();
+
+-- Free-tier monthly quota (see supabase/migrations/20260411120000_add_free_quota_key.sql)
+-- ALTER TABLE public.analyses ADD COLUMN IF NOT EXISTS free_quota_key TEXT;

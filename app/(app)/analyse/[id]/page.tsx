@@ -3,6 +3,11 @@ import { notFound } from 'next/navigation'
 import { ScoreHero } from '@/components/results/ScoreHero'
 import { DimensionBars } from '@/components/results/DimensionBars'
 import { ShareRow } from '@/components/results/ShareRow'
+import {
+  PERSONALIZED_PREMIUM_HOOK,
+  personalizeReportList,
+  personalizeReportText,
+} from '@/lib/report-copy'
 import type { AnalysisPublic } from '@/types/analysis'
 
 interface PageParams {
@@ -58,13 +63,13 @@ export default async function AnalysePage({ params }: PageParams) {
     category: analysis.category,
     faceArchetype: analysis.face_archetype,
     confidenceScore: Number(analysis.confidence_score ?? 0),
-    executiveSummary: analysis.summary,
-    strengths: analysis.strengths,
-    weaknesses: analysis.weaknesses ?? [],
-    tradeoffs: analysis.tradeoffs ?? [],
+    executiveSummary: personalizeReportText(analysis.summary),
+    strengths: personalizeReportList(analysis.strengths),
+    weaknesses: personalizeReportList(analysis.weaknesses ?? []),
+    tradeoffs: personalizeReportList(analysis.tradeoffs ?? []),
     weakestDimension: analysis.weakest_dimension,
-    freeTip: analysis.free_tip,
-    premiumTips: analysis.premium_tips ?? [],
+    freeTip: personalizeReportText(analysis.free_tip),
+    premiumTips: personalizeReportList(analysis.premium_tips ?? []),
     citations: analysis.citations ?? [],
     improvementPredictions: analysis.improvement_predictions ?? [],
     countryCode: analysis.country_code,
@@ -74,9 +79,8 @@ export default async function AnalysePage({ params }: PageParams) {
     persisted: true,
     createdAt: analysis.created_at,
     goldenRatioScore: analysis.proportionality_score,
-    summary: analysis.summary,
-    premiumHook:
-      "Unlock the extended report to see weaknesses, citations, and practical next-step guidance.",
+    summary: personalizeReportText(analysis.summary),
+    premiumHook: PERSONALIZED_PREMIUM_HOOK,
   }
 
   return (
