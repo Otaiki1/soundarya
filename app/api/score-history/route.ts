@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       Boolean(normalizedWalletAddress) &&
       ownProfile?.data?.wallet_address?.toLowerCase() === normalizedWalletAddress;
 
-    const queries: Array<Promise<{ data: ScoreHistoryAnalysis[] | null }>> = [];
+    const queries: Array<PromiseLike<{ data: ScoreHistoryAnalysis[] | null }>> = [];
 
     if (user?.id) {
       queries.push(

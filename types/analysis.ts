@@ -1,4 +1,4 @@
-import type { GrokAnalysisResult, ScoreCategory } from './grok'
+import type { AIAnalysisResult, ScoreCategory, FaceArchetype, ImprovementPrediction } from './ai'
 
 /**
  * Loading stages for analysis animation
@@ -8,7 +8,7 @@ export type LoadingStage = 'detecting' | 'symmetry' | 'ratio' | 'structure' | 'w
 /**
  * Analysis database record (uses snake_case from DB)
  */
-export interface Analysis extends GrokAnalysisResult {
+export interface Analysis extends AIAnalysisResult {
   id: string
   user_id?: string
   session_id: string
@@ -45,15 +45,31 @@ export interface AnalysisPublic {
   harmonyScore: number
   skinScore: number
   dimorphismScore: number
+  proportionalityScore: number
+  averagenessScore: number
+  neotenyScore: number
+  adiposityScore: number
   percentile: number
   category: ScoreCategory
+  faceArchetype: FaceArchetype
+  confidenceScore: number
   summary: string
+  executiveSummary: string
   strengths: string[]
+  weaknesses: string[]
+  tradeoffs: string[]
+  weakestDimension: string
   freeTip: string
   premiumHook: string
+  premiumTips: string[]
+  citations: string[]
+  improvementPredictions: ImprovementPrediction[]
   countryCode?: string
   countryName?: string
   premiumUnlocked: boolean
+  unlockTier: number
+  persisted: boolean
+  persistenceError?: string
   createdAt: string
 }
 
