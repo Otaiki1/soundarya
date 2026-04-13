@@ -25,8 +25,15 @@ export interface GeminiAPIResponse {
 }
 
 function isRetryableGeminiStatus(status: number): boolean {
-  return status === 400 || status === 401 || status === 403 || status === 429 || status >= 500;
+  return status === 401 || status === 403 || status === 429 || status >= 500;
 }
+
+const DEFAULT_GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+];
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -60,8 +67,7 @@ export function getGeminiModels(): string[] {
     new Set([
       ...explicitModels,
       ...(primaryModel ? [primaryModel] : []),
-      "gemini-2.5-flash",
-      "gemini-1.5-flash",
+      ...DEFAULT_GEMINI_MODELS,
     ]),
   );
 }
@@ -104,6 +110,13 @@ export async function generateGeminiContent(
 
         const hasNextKey = keyIndex < apiKeys.length - 1;
         const hasNextModel = modelIndex < models.length - 1;
+        if (response.status === 404 && hasNextModel) {
+          console.warn(
+            `Gemini model ${candidateModel} returned 404. Skipping to fallback model ${modelIndex + 2}/${models.length}.`,
+          );
+          break;
+        }
+
         if (!isRetryableGeminiStatus(response.status) || (!hasNextKey && !hasNextModel)) {
           return response;
         }
@@ -251,25 +264,28 @@ function roundToTenth(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+// Only unambiguously photography-specific phrases to avoid false positives.
+// Single words like "light", "angle", "pose", "edit", "background" are
+// legitimate in appearance advice ("highlight", "jaw angle", "posture", etc.)
 const PHOTO_ADVICE_PATTERNS = [
-  "photo",
-  "picture",
-  "image",
-  "camera",
-  "lighting",
-  "light",
-  "angle",
-  "pose",
   "selfie",
-  "filter",
-  "edit",
-  "edited",
+  "camera",
   "retouch",
-  "crop",
-  "portrait",
-  "upload",
-  "resolution",
-  "background",
+  "photoshop",
+  "take a photo",
+  "take a picture",
+  "better photo",
+  "better picture",
+  "better lighting",
+  "good lighting",
+  "different lighting",
+  "improve lighting",
+  "photo quality",
+  "picture quality",
+  "image quality",
+  "photo filter",
+  "upload a photo",
+  "photograph yourself",
 ];
 
 function deriveCategory(overallScore: number): ScoreCategory {
@@ -939,10 +955,16 @@ async function runGeminiAnalysisAttempt(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    const providerMessage =
+      typeof errorData?.error?.message === "string"
+        ? errorData.error.message
+        : undefined;
     return {
       success: false,
       error: {
-        error: `Gemini API error: ${response.status} ${response.statusText}`,
+        error: providerMessage
+          ? `Gemini API error: ${response.status} ${response.statusText} - ${providerMessage}`
+          : `Gemini API error: ${response.status} ${response.statusText}`,
         status: response.status,
         code:
           typeof errorData?.error?.status === "string"

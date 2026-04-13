@@ -225,6 +225,7 @@ export default function Home() {
     const [downtimeOpen, setDowntimeOpen] = useState(false);
     const [ethPriceUsd, setEthPriceUsd] = useState<number | null>(null);
     const [quotaNotice, setQuotaNotice] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const contractEthLabels = useMemo(() => {
@@ -281,6 +282,7 @@ export default function Home() {
         setIsModalOpen(true);
         setResult(null);
         setQuotaNotice(null);
+        setUploadError(null);
 
         try {
             const sessionId = getOrCreateSessionId();
@@ -325,7 +327,8 @@ export default function Home() {
                     return;
                 }
 
-                throw new Error(message);
+                setUploadError(message);
+                return;
             }
 
             const data = await response.json();
@@ -335,6 +338,9 @@ export default function Home() {
             }
         } catch (error) {
             console.error(error);
+            setUploadError(
+                error instanceof Error ? error.message : "Analysis failed. Please try again.",
+            );
         } finally {
             setIsUploading(false);
         }
@@ -1088,9 +1094,11 @@ export default function Home() {
                     setIsUploading(false);
                     setResult(null);
                     setUploadedFile(null);
+                    setUploadError(null);
                 }}
                 imageFile={uploadedFile}
                 analysisResult={isUploading ? null : result}
+                error={uploadError}
             />
             <DowntimeModal
                 isOpen={downtimeOpen}

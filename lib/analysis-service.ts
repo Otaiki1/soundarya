@@ -98,7 +98,11 @@ export async function createStoredAnalysis({
 }: CreateAnalysisParams): Promise<AnalysisPublic> {
   const validation = await validateImage(photo);
   if (!validation.isValid) {
-    throw new Error(validation.error || "Invalid image");
+    throw new AnalysisServiceError(
+      validation.error || "Invalid image. Please try a different file.",
+      400,
+      "IMAGE_INVALID",
+    );
   }
 
   const processedImage = await processImageForAnalysis(photo);
@@ -114,8 +118,10 @@ export async function createStoredAnalysis({
       );
     }
 
-    throw new Error(
-      "AI analysis failed: " + (aiResult.error?.error || "Unknown error"),
+    throw new AnalysisServiceError(
+      "Analysis failed. Please try again or upload a different photo.",
+      500,
+      "ANALYSIS_FAILED",
     );
   }
 

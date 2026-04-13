@@ -13,13 +13,14 @@ import { MintScoreModal } from '@/components/web3/MintScoreModal'
 import type { AnalysisPublic } from '@/types/analysis'
 import { getOrCreateSessionId } from '@/lib/session'
 
-type ModalState = 'LOADING' | 'RESULT'
+type ModalState = 'LOADING' | 'ERROR' | 'RESULT'
 
 interface AnalysisModalProps {
   isOpen: boolean
   onClose: () => void
   imageFile: File | null
   analysisResult: AnalysisPublic | null
+  error?: string | null
 }
 
 const STAGES = [
@@ -30,7 +31,7 @@ const STAGES = [
   'Writing your report',
 ]
 
-export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: AnalysisModalProps) {
+export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult, error }: AnalysisModalProps) {
   const [visibleStageIndex, setVisibleStageIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [ethPrice, setEthPrice] = useState<number | null>(null)
@@ -94,9 +95,10 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
   }, [isConfirmed, resolvedAnalysis?.id])
 
   const modalState: ModalState = useMemo(() => {
+    if (error) return 'ERROR'
     if (!resolvedAnalysis) return 'LOADING'
     return 'RESULT'
-  }, [resolvedAnalysis])
+  }, [resolvedAnalysis, error])
 
   const unlockTier = resolvedAnalysis?.unlockTier ?? 0
   const hasPremium = isSubscribed || unlockTier >= 2 || resolvedAnalysis?.premiumUnlocked
@@ -125,6 +127,19 @@ export function AnalysisModal({ isOpen, onClose, imageFile, analysisResult }: An
           >
             ✕
           </button>
+
+          {modalState === 'ERROR' && (
+            <div className="p-8 sm:p-12 flex flex-col items-center text-center">
+              <div className="w-12 h-12 mb-6 flex items-center justify-center border border-red-400/40 rounded-full text-red-400 text-xl">
+                ✕
+              </div>
+              <h2 className="font-serif text-3xl text-gold-light mb-3">Upload Failed</h2>
+              <p className="text-sm text-soft max-w-sm leading-relaxed mb-8">{error}</p>
+              <button onClick={onClose} className="btn-primary">
+                Try Again
+              </button>
+            </div>
+          )}
 
           {modalState === 'LOADING' && (
             <div className="p-8 sm:p-12 flex flex-col items-center text-center">
